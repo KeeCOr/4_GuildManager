@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>4_GM 기획서 — 아이언홀드 용병단 길드</title>
+<style>
+  :root {
+    --bg: #0a0814;
+    --bg2: #0f0d1e;
+    --bg3: #13112a;
+    --card: rgba(255,255,255,0.04);
+    --card-border: rgba(255,255,255,0.08);
+    --gold: #f59e0b;
+    --gold-dim: rgba(245,158,11,0.7);
+    --purple: #7c3aed;
+    --purple-light: #a78bfa;
+    --text: rgba(220,210,195,0.92);
+    --text-dim: rgba(160,150,130,0.7);
+    --text-faint: rgba(100,90,80,0.6);
+    --accent: #9333ea;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; font-size: 14px; line-height: 1.6; }
+
+  /* ── Layout ── */
+  .sidebar { position: fixed; top: 0; left: 0; width: 220px; height: 100vh; background: var(--bg2); border-right: 1px solid rgba(120,80,200,0.2); overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 220px; padding: 40px 48px; max-width: 1100px; }
+
+  /* ── Sidebar ── */
+  .sidebar-title { padding: 0 16px 16px; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--gold-dim); border-bottom: 1px solid rgba(245,158,11,0.15); margin-bottom: 8px; }
+  .sidebar a { display: block; padding: 7px 16px; color: var(--text-dim); text-decoration: none; font-size: 13px; transition: all 0.15s; border-left: 2px solid transparent; }
+  .sidebar a:hover, .sidebar a.active { color: var(--gold); border-left-color: var(--gold); background: rgba(245,158,11,0.06); }
+  .sidebar .section-label { padding: 12px 16px 4px; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(120,80,200,0.6); }
+
+  /* ── Typography ── */
+  h1 { font-size: 32px; font-weight: 800; color: #fff; letter-spacing: -0.5px; }
+  h2 { font-size: 22px; font-weight: 700; color: var(--gold); margin: 48px 0 20px; padding-bottom: 10px; border-bottom: 1px solid rgba(245,158,11,0.2); display: flex; align-items: center; gap: 10px; }
+  h2 .icon { font-size: 20px; }
+  h3 { font-size: 16px; font-weight: 600; color: var(--purple-light); margin: 24px 0 12px; }
+  p { color: var(--text); margin-bottom: 10px; }
+
+  /* ── Hero ── */
+  .hero { background: linear-gradient(135deg, rgba(124,58,237,0.15), rgba(180,83,9,0.1)); border: 1px solid rgba(120,80,200,0.25); border-radius: 16px; padding: 32px 36px; margin-bottom: 40px; }
+  .hero h1 { margin-bottom: 6px; }
+  .hero .sub { font-size: 15px; color: var(--text-dim); margin-bottom: 20px; }
+  .hero .badges { display: flex; gap: 10px; flex-wrap: wrap; }
+  .badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .badge-purple { background: rgba(124,58,237,0.2); border: 1px solid rgba(124,58,237,0.4); color: var(--purple-light); }
+  .badge-gold { background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.35); color: var(--gold); }
+  .badge-red { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.35); color: #f87171; }
+  .badge-green { background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.35); color: #4ade80; }
+  .badge-blue { background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.35); color: #60a5fa; }
+
+  /* ── Cards ── */
+  .card { background: var(--card); border: 1px solid var(--card-border); border-radius: 12px; padding: 20px 24px; margin-bottom: 16px; }
+  .card-grid { display: grid; gap: 12px; }
+  .card-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+  .card-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .card-grid.cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+  /* ── Tables ── */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th { background: rgba(255,255,255,0.05); color: var(--gold-dim); font-weight: 700; padding: 10px 14px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  tbody td { padding: 9px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--text); }
+  tbody tr:hover td { background: rgba(255,255,255,0.03); }
+  .tbl-wrap { border: 1px solid var(--card-border); border-radius: 10px; overflow: hidden; margin-bottom: 20px; }
+
+  /* ── Stat chips ── */
+  .stat-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+  .stat-chip { padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; border: 1px solid; }
+  .chip-atk { background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.3); color: #f87171; }
+  .chip-trap { background: rgba(168,85,247,0.12); border-color: rgba(168,85,247,0.3); color: #c084fc; }
+  .chip-surv { background: rgba(34,197,94,0.12); border-color: rgba(34,197,94,0.3); color: #4ade80; }
+  .chip-coop { background: rgba(59,130,246,0.12); border-color: rgba(59,130,246,0.3); color: #60a5fa; }
+  .chip-hp { background: rgba(251,191,36,0.12); border-color: rgba(251,191,36,0.3); color: #fbbf24; }
+  .chip-cost { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.3); color: var(--gold); }
+
+  /* ── Element badges ── */
+  .el-fire   { background: rgba(234,88,12,0.2);  border-color: rgba(234,88,12,0.4);  color: #fb923c; }
+  .el-ice    { background: rgba(34,211,238,0.15); border-color: rgba(34,211,238,0.35);color: #67e8f9; }
+  .el-light  { background: rgba(250,204,21,0.15); border-color: rgba(250,204,21,0.35);color: #fde047; }
+  .el-dark   { background: rgba(147,51,234,0.2);  border-color: rgba(147,51,234,0.4); color: #c084fc; }
+  .el-nature { background: rgba(34,197,94,0.15);  border-color: rgba(34,197,94,0.35); color: #4ade80; }
+  .el-thunder{ background: rgba(250,204,21,0.2);  border-color: rgba(250,204,21,0.4); color: #fbbf24; }
+
+  /* ── Info boxes ── */
+  .info-box { border-radius: 10px; padding: 14px 18px; margin-bottom: 14px; font-size: 13px; }
+  .info-purple { background: rgba(124,58,237,0.08); border: 1px solid rgba(124,58,237,0.2); }
+  .info-gold { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.2); }
+  .info-red { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); }
+
+  /* ── Grade colors ── */
+  .grade-s { color: #e879f9; font-weight: 700; }
+  .grade-a { color: #fbbf24; font-weight: 700; }
+  .grade-b { color: #34d399; font-weight: 700; }
+  .grade-c { color: #38bdf8; font-weight: 700; }
+  .grade-d { color: #94a3b8; font-weight: 700; }
+
+  /* ── Formula ── */
+  .formula { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 12px 16px; font-family: 'Consolas', monospace; font-size: 13px; color: #a78bfa; margin-bottom: 12px; white-space: pre-wrap; }
+
+  /* ── Timeline ── */
+  .timeline { position: relative; padding-left: 28px; }
+  .timeline::before { content: ''; position: absolute; left: 8px; top: 6px; bottom: 6px; width: 1px; background: rgba(120,80,200,0.3); }
+  .timeline-item { position: relative; margin-bottom: 18px; }
+  .timeline-item::before { content: ''; position: absolute; left: -22px; top: 5px; width: 8px; height: 8px; border-radius: 50%; background: var(--purple); border: 2px solid var(--bg2); }
+  .timeline-label { font-weight: 700; color: var(--gold); font-size: 13px; }
+  .timeline-desc { color: var(--text-dim); font-size: 13px; }
+
+  /* ── Responsive ── */
+  @media (max-width: 900px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 24px 20px; }
+    .card-grid.cols-3, .card-grid.cols-4 { grid-template-columns: 1fr 1fr; }
+    .card-grid.cols-2 { grid-template-columns: 1fr; }
+  }
+
+  /* ── Misc ── */
+  .divider { height: 1px; background: rgba(255,255,255,0.06); margin: 40px 0; }
+  .big-number { font-size: 28px; font-weight: 800; color: var(--gold); }
+  .label { font-size: 11px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 1px; }
+  .note { font-size: 12px; color: var(--text-faint); font-style: italic; }
+  ul.dot-list { list-style: none; padding: 0; }
+  ul.dot-list li { padding: 3px 0; padding-left: 16px; position: relative; font-size: 13px; }
+  ul.dot-list li::before { content: '›'; position: absolute; left: 0; color: var(--purple-light); font-weight: bold; }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<nav class="sidebar">
+  <div class="sidebar-title">⚔ 4_GM 기획서</div>
+  <div class="section-label">개요</div>
+  <a href="#overview">게임 개요</a>
+  <a href="#world">세계관</a>
+  <a href="#loop">핵심 루프</a>
+  <div class="section-label">시스템</div>
+  <a href="#mercs">용병 시스템</a>
+  <a href="#classes">직업 / 종족</a>
+  <a href="#elements">속성 시스템</a>
+  <a href="#weapons">무기 시스템</a>
+  <div class="section-label">콘텐츠</div>
+  <a href="#quests">퀘스트 목록</a>
+  <a href="#buildings">건물 / 룸</a>
+  <a href="#economy">경제 시스템</a>
+  <div class="section-label">공식</div>
+  <a href="#formulas">전투 공식</a>
+  <a href="#guild">길드 레벨</a>
+  <div class="section-label">밸런스</div>
+  <a href="#balance">밸런스 참고</a>
+  <a href="#tutorial">튜토리얼 흐름</a>
+</nav>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- Hero -->
+  <div class="hero" id="overview">
+    <p class="label">Game Design Document · v1.1.2 · 2026-04-20</p>
+    <h1>아이언홀드 용병단 길드</h1>
+    <p class="sub">중세 암흑 판타지 × 길드 경영 시뮬레이션 — 4_GM</p>
+    <div class="badges">
+      <span class="badge badge-purple">⚛ React 18 + TypeScript</span>
+      <span class="badge badge-gold">🏰 1600×900 Fixed Canvas</span>
+      <span class="badge badge-green">📜 18 퀘스트</span>
+      <span class="badge badge-blue">🗡 15 무기</span>
+      <span class="badge badge-red">👥 5 직업 × 4 종족</span>
+    </div>
+  </div>
+
+  <!-- ── 세계관 ── -->
+  <h2 id="world"><span class="icon">🌑</span> 세계관</h2>
+  <div class="card">
+    <h3>아이언홀드</h3>
+    <p>험준한 산맥과 마족의 영토가 맞닿은 요새 도시. 전쟁, 야수, 함정, 부패한 귀족들이 끊임없이 용병을 필요로 한다.</p>
+    <p>플레이어는 도시 변두리의 낡은 건물을 사들여 <strong>용병단 길드</strong>를 세웠다. 아직 이름도 없는 작은 길드지만, 언젠가 이 땅에서 가장 강력한 용병단이 될 것이다.</p>
+  </div>
+  <div class="card-grid cols-3">
+    <div class="card">
+      <div class="big-number">🏚→🏰</div>
+      <div class="label" style="margin-top:4px">초기 상태</div>
+      <p style="margin-top:8px;font-size:13px;">낡은 건물 한 채. 용병 3명. 금화 500G. 식량 80.</p>
+    </div>
+    <div class="card">
+      <div class="big-number">🐉</div>
+      <div class="label" style="margin-top:4px">최종 목표</div>
+      <p style="margin-top:8px;font-size:13px;">드래곤 토벌 — 명성 100 이상, S급 파티 구성.</p>
+    </div>
+    <div class="card">
+      <div class="big-number">⭐</div>
+      <div class="label" style="margin-top:4px">성공 척도</div>
+      <p style="margin-top:8px;font-size:13px;">명성(Fame)으로 길드 레벨 상승. Lv5가 되면 모든 계약 해금.</p>
+    </div>
+  </div>
+
+  <!-- ── 핵심 루프 ── -->
+  <h2 id="loop"><span class="icon">🔄</span> 핵심 게임 루프</h2>
+  <div class="timeline">
+    <div class="timeline-item">
+      <div class="timeline-label">① 용병 도착</div>
+      <div class="timeline-desc">병영 레벨에 따라 N일마다 용병들이 길드 문에 찾아옴. 고용(비용) or 거절. 🔄 50G로 즉시 새로고침 가능.</div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-label">② 계약 수주</div>
+      <div class="timeline-desc">퀘스트 풀에서 계약 선택. 길드 레벨과 홀 레벨에 따라 표시 퀘스트 수·난이도 범위 변동.</div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-label">③ 파티 구성</div>
+      <div class="timeline-desc">클릭 or 드래그로 용병을 슬롯에 배치. 속성 일치 시 ✦ 보너스 표시.</div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-label">④ 실시간 파견</div>
+      <div class="timeline-desc">파견 중에도 다른 퀘스트 동시 수행 가능. 타이머 완료 후 성공/실패 판정.</div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-label">⑤ 보상 수령</div>
+      <div class="timeline-desc">금화·식량·명성·경험치 획득. 사망 시 등급별 장례 비용 차감.</div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-label">⑥ 길드 성장</div>
+      <div class="timeline-desc">금화로 건물 건설/업그레이드. 명성으로 길드 레벨 상승. 용병 무기 업그레이드로 전력 강화.</div>
+    </div>
+  </div>
+
+  <!-- ── 용병 시스템 ── -->
+  <h2 id="mercs"><span class="icon">🚶</span> 용병 시스템</h2>
+
+  <h3>핵심 스탯</h3>
+  <div class="card-grid cols-4">
+    <div class="card" style="text-align:center">
+      <div style="font-size:20px;">⚔️</div>
+      <div style="font-weight:700;color:#f87171;margin:6px 0 4px;">공격력</div>
+      <p class="note">전투력 계산 핵심. 퀘스트 성공률·사망률 영향.</p>
+    </div>
+    <div class="card" style="text-align:center">
+      <div style="font-size:20px;">🔧</div>
+      <div style="font-weight:700;color:#c084fc;margin:6px 0 4px;">함정해제</div>
+      <p class="note">도적·궁수 전용. 함정 퀘스트 필수 스탯.</p>
+    </div>
+    <div class="card" style="text-align:center">
+      <div style="font-size:20px;">💚</div>
+      <div style="font-weight:700;color:#4ade80;margin:6px 0 4px;">생존율</div>
+      <p class="note">사망 위험 감소. 장기 원정일수록 중요.</p>
+    </div>
+    <div class="card" style="text-align:center">
+      <div style="font-size:20px;">🤝</div>
+      <div style="font-weight:700;color:#60a5fa;margin:6px 0 4px;">협조성</div>
+      <p class="note">파티 시너지에 영향. 평균 협조성이 높을수록 사망률 감소.</p>
+    </div>
+  </div>
+
+  <h3>실효 전력 공식</h3>
+  <div class="formula">effPower(m) = (m.power + weaponPowerBonus) × (0.4 + 0.6 × condition/100) × favMod
+favMod = 1 + (favorability - 50) / 500   // 범위: 0.9 ~ 1.1</div>
+
+  <h3>등급 시스템</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>등급</th><th>스탯 총합</th><th>장례 비용</th><th>고용 비용</th><th>일급 기준</th></tr></thead>
+      <tbody>
+        <tr><td><span class="grade-d">D ★</span></td><td>42</td><td>80G</td><td>무료</td><td>~18G/일</td></tr>
+        <tr><td><span class="grade-c">C ★★</span></td><td>58</td><td>150G</td><td>0~20G</td><td>~28G/일</td></tr>
+        <tr><td><span class="grade-b">B ★★★</span></td><td>72</td><td>280G</td><td>50G~</td><td>~45G/일</td></tr>
+        <tr><td><span class="grade-a">A ★★★★</span></td><td>86</td><td>500G</td><td>100G~</td><td>~70G/일</td></tr>
+        <tr><td><span class="grade-s">S ★★★★★</span></td><td>102</td><td>1,000G</td><td>200G~</td><td>~100G/일</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>레벨업 시스템</h3>
+  <div class="info-box info-purple">
+    <strong>경험치 → 레벨업</strong> : expToNext = level × 100 (Lv1→100XP, Lv2→200XP …)<br>
+    레벨업 시 모든 전투 스탯 +1, 전력(power) +3 상승.
+    훈련소 배치 시 매일 XP 자동 획득 (레벨에 따라 1/3/6 XP).
+  </div>
+
+  <!-- ── 직업 / 종족 ── -->
+  <h2 id="classes"><span class="icon">⚔️</span> 직업 / 종족</h2>
+
+  <h3>직업 (5종)</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>직업</th><th>아이콘</th><th>공격 배율</th><th>함정 배율</th><th>생존 배율</th><th>비용 배율</th><th>주요 역할</th></tr></thead>
+      <tbody>
+        <tr><td><strong>전사</strong></td><td>⚔️</td><td>1.05</td><td>0.90</td><td>1.20</td><td>1.10</td><td>탱커·전선 방어, 사망률 -12%</td></tr>
+        <tr><td><strong>궁수</strong></td><td>🏹</td><td>1.30</td><td>0.80</td><td>1.00</td><td>1.05</td><td>원거리 딜러, 함정해제 보조</td></tr>
+        <tr><td><strong>도적</strong></td><td>🗡️</td><td>0.90</td><td>1.40</td><td>0.95</td><td>0.95</td><td>함정해제 특화, 암흑 속성 시너지</td></tr>
+        <tr><td><strong>마법사</strong></td><td>🪄</td><td>1.35</td><td>1.00</td><td>0.90</td><td>1.30</td><td>최고 공격, 단독 취약·힐러 필요</td></tr>
+        <tr><td><strong>성직자</strong></td><td>🕊️</td><td>0.75</td><td>1.00</td><td>1.25</td><td>1.25</td><td>파티 사망률 -35%, 회복·지원</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>종족 (4종)</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>종족</th><th>협조성 기준</th><th>공격력</th><th>함정해제</th><th>생존율</th><th>HP</th><th>비용 배율</th><th>특징</th></tr></thead>
+      <tbody>
+        <tr><td>🧝 <strong>엘프</strong></td><td>48</td><td>0</td><td class="chip-trap">+8</td><td>-5</td><td>-10</td><td>×1.0</td><td>함정 특화, 생존은 낮음</td></tr>
+        <tr><td>⚜️ <strong>인간</strong></td><td>70</td><td class="chip-atk">+3</td><td>+2</td><td>+2</td><td>+5</td><td>×1.0</td><td>만능형, 협조성 최고</td></tr>
+        <tr><td>⛏️ <strong>드워프</strong></td><td>60</td><td class="chip-atk">+5</td><td>-5</td><td class="chip-surv">+10</td><td>+15</td><td>×1.5</td><td>최강 생존·HP, 고용 비쌈</td></tr>
+        <tr><td>🐺 <strong>수인</strong></td><td>55</td><td class="chip-atk">+8</td><td>+3</td><td>-5</td><td>-5</td><td>×0.9</td><td>최고 공격, 저렴, 생존 낮음</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>속성 가중치 (직업별 랜덤 속성 확률)</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>직업 \ 속성</th><th>🔥 불</th><th>🧊 얼음</th><th>⚡ 번개</th><th>🌿 자연</th><th>🌑 암흑</th><th>✨ 빛</th></tr></thead>
+      <tbody>
+        <tr><td>⚔️ 전사</td><td><strong>5</strong></td><td>2</td><td>2</td><td>1</td><td>0</td><td>0</td></tr>
+        <tr><td>🏹 궁수</td><td>0</td><td>1</td><td>2</td><td><strong>5</strong></td><td>1</td><td>1</td></tr>
+        <tr><td>🗡️ 도적</td><td>0</td><td>1</td><td>2</td><td>1</td><td><strong>5</strong></td><td>1</td></tr>
+        <tr><td>🪄 마법사</td><td>2</td><td><strong>3</strong></td><td><strong>3</strong></td><td>0</td><td>2</td><td>0</td></tr>
+        <tr><td>🕊️ 성직자</td><td>0</td><td>2</td><td>0</td><td>2</td><td>1</td><td><strong>5</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── 속성 시스템 ── -->
+  <h2 id="elements"><span class="icon">✨</span> 속성 시스템</h2>
+  <p>용병의 속성이 퀘스트 속성과 일치할 때 <strong>✦ 일치</strong> 보너스 발동.</p>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>속성</th><th>일치 효과 (성공률)</th><th>추가 기계 효과</th><th>주 사용 직업</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge stat-chip el-fire">🔥 불</span></td><td>+13%</td><td>전투력 +15%</td><td>전사</td></tr>
+        <tr><td><span class="badge stat-chip el-ice">🧊 얼음</span></td><td>+8%</td><td>컨디션 소모 -50%</td><td>마법사</td></tr>
+        <tr><td><span class="badge stat-chip el-thunder">⚡ 번개</span></td><td>+9%</td><td>소요시간 -25%</td><td>마법사·도적</td></tr>
+        <tr><td><span class="badge stat-chip el-nature">🌿 자연</span></td><td>+10%</td><td>사망 위험 -35%</td><td>궁수</td></tr>
+        <tr><td><span class="badge stat-chip el-dark">🌑 암흑</span></td><td>+11%</td><td>함정 적중 +15%</td><td>도적</td></tr>
+        <tr><td><span class="badge stat-chip el-light">✨ 빛</span></td><td>+14%</td><td>파티 회생 -30%</td><td>성직자</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="info-box info-gold">
+    <strong>암흑 + 함정 퀘스트:</strong> 암흑 속성 용병 1명당 추가 +8% 성공률<br>
+    <strong>번개 속성 용병:</strong> 파견 소요시간 추가 -12% (최대 -40%)
+  </div>
+
+  <!-- ── 무기 시스템 ── -->
+  <h2 id="weapons"><span class="icon">🗡</span> 무기 시스템</h2>
+  <p>용병은 직업별 무기를 3티어(낡은 → 중급 → 상급)로 업그레이드 가능. 종족 친화 보너스 추가.</p>
+
+  <h3>전사 무기</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>티어</th><th>무기</th><th>전력</th><th>공격</th><th>생존</th><th>업그레이드 비용</th><th>종족 친화</th></tr></thead>
+      <tbody>
+        <tr><td>T1</td><td>🗡 낡은 검</td><td>0</td><td>0</td><td>0</td><td>100G</td><td>드워프+2, 수인+1, 인간+1</td></tr>
+        <tr><td>T2</td><td>⚔ 강철 대검</td><td>+5</td><td>+4</td><td>0</td><td>260G</td><td>드워프+4, 수인+2, 인간+1</td></tr>
+        <tr><td>T3</td><td>⚜ 영웅의 검</td><td>+12</td><td>+10</td><td>+3</td><td>최종</td><td>드워프+5, 수인+3, 인간+2</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>궁수 무기</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>티어</th><th>무기</th><th>전력</th><th>공격</th><th>함정</th><th>업그레이드 비용</th><th>종족 친화</th></tr></thead>
+      <tbody>
+        <tr><td>T1</td><td>🏹 낡은 단궁</td><td>0</td><td>0</td><td>0</td><td>90G</td><td>엘프+2, 인간+1</td></tr>
+        <tr><td>T2</td><td>🏹 장궁</td><td>+5</td><td>+4</td><td>+4</td><td>240G</td><td>엘프+4, 인간+1</td></tr>
+        <tr><td>T3</td><td>🎯 황금 석궁</td><td>+12</td><td>+9</td><td>+9</td><td>최종</td><td>엘프+5, 인간+2</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>도적 무기</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>티어</th><th>무기</th><th>전력</th><th>공격</th><th>함정</th><th>업그레이드 비용</th><th>종족 친화</th></tr></thead>
+      <tbody>
+        <tr><td>T1</td><td>🔪 낡은 단검</td><td>0</td><td>0</td><td>0</td><td>85G</td><td>수인+2, 인간+1</td></tr>
+        <tr><td>T2</td><td>💉 독 단검</td><td>+5</td><td>+3</td><td>+8</td><td>220G</td><td>수인+4, 인간+1</td></tr>
+        <tr><td>T3</td><td>🌑 그림자 칼날</td><td>+12</td><td>+7</td><td>+18</td><td>최종</td><td>수인+5, 인간+2</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>마법사 무기</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>티어</th><th>무기</th><th>전력</th><th>공격</th><th>업그레이드 비용</th><th>종족 친화</th></tr></thead>
+      <tbody>
+        <tr><td>T1</td><td>🪄 낡은 지팡이</td><td>0</td><td>0</td><td>100G</td><td>엘프+2, 인간+1</td></tr>
+        <tr><td>T2</td><td>🔮 수정 완드</td><td>+6</td><td>+6</td><td>280G</td><td>엘프+5, 인간+1</td></tr>
+        <tr><td>T3</td><td>📖 고대 마법서</td><td>+14</td><td>+14</td><td>최종</td><td>엘프+6, 인간+2</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>성직자 무기</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>티어</th><th>무기</th><th>전력</th><th>공격</th><th>생존</th><th>업그레이드 비용</th><th>종족 친화</th></tr></thead>
+      <tbody>
+        <tr><td>T1</td><td>🔨 낡은 철퇴</td><td>0</td><td>0</td><td>0</td><td>95G</td><td>인간+2, 엘프+1</td></tr>
+        <tr><td>T2</td><td>✨ 성스러운 철퇴</td><td>+5</td><td>+3</td><td>+5</td><td>250G</td><td>인간+3, 엘프+2</td></tr>
+        <tr><td>T3</td><td>💫 성검</td><td>+12</td><td>+7</td><td>+10</td><td>최종</td><td>인간+4, 엘프+3</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── 퀘스트 목록 ── -->
+  <h2 id="quests"><span class="icon">📜</span> 퀘스트 목록 (18종)</h2>
+
+  <div class="info-box info-purple">
+    <strong>퀘스트 표시 수:</strong> 홀 Lv1=5건, Lv2=7건, Lv3=9건, Lv4=12건<br>
+    <strong>티어 시스템:</strong> 현재 티어(100%), 상위 티어(20% 확률), 하위 티어(30% 확률)로 풀 구성
+  </div>
+
+  <h3>Lv1 티어 (난이도 ≤120, 명성 0~29)</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>ID</th><th>이름</th><th>난이도</th><th>슬롯</th><th>시간</th><th>사망위험</th><th>컨디션</th><th>속성</th><th>함정</th><th>보상 (금/식/명/경)</th></tr></thead>
+      <tbody>
+        <tr><td>q1</td><td>쥐 사냥</td><td>30</td><td>1~4</td><td>1단계</td><td>1%</td><td>8</td><td>🌿</td><td></td><td>22G / 8 / 2⭐ / 15XP</td></tr>
+        <tr><td>q2</td><td>야간 경비</td><td>50</td><td>1~4</td><td>2단계</td><td>2%</td><td>10</td><td>🌑</td><td></td><td>38G / 12 / 3⭐ / 20XP</td></tr>
+        <tr><td>q3</td><td>상인 호위</td><td>85</td><td>1~4</td><td>2단계</td><td>4%</td><td>12</td><td>🌿</td><td></td><td>68G / 18 / 5⭐ / 30XP</td></tr>
+        <tr><td>q11</td><td>마을 치유 봉사</td><td>55</td><td>1~4</td><td>1단계</td><td>1%</td><td>5</td><td>✨</td><td></td><td>30G / 15 / 3⭐ / 18XP</td></tr>
+        <tr><td>q12</td><td>얼음 동굴 수색</td><td>90</td><td>1~4</td><td>2단계</td><td>3%</td><td>14</td><td>🧊</td><td></td><td>60G / 20 / 4⭐ / 28XP</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Lv2 티어 (난이도 121~210, 명성 30~79)</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>ID</th><th>이름</th><th>난이도</th><th>슬롯</th><th>시간</th><th>사망위험</th><th>컨디션</th><th>속성</th><th>함정</th><th>보상 (금/식/명/경)</th></tr></thead>
+      <tbody>
+        <tr><td>q4</td><td>도둑단 소탕</td><td>150</td><td>2~4</td><td>3단계</td><td>8%</td><td>18</td><td>🔥</td><td></td><td>135G / 28 / 10⭐ / 50XP</td></tr>
+        <tr><td>q5</td><td>광산 함정 해제</td><td>180</td><td>2~4</td><td>3단계</td><td>10%</td><td>20</td><td>🌑</td><td>🔧</td><td>195G / 15 / 12⭐ / 60XP</td></tr>
+        <tr><td>q13</td><td>독숲 정찰</td><td>145</td><td>1~4</td><td>2단계</td><td>6%</td><td>18</td><td>🌿</td><td>🔧</td><td>120G / 22 / 7⭐ / 46XP</td></tr>
+        <tr><td>q14</td><td>번개 정령 포획</td><td>185</td><td>2~4</td><td>3단계</td><td>8%</td><td>18</td><td>⚡</td><td></td><td>170G / 18 / 10⭐ / 58XP</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Lv3 티어 (난이도 211~330, 명성 80~179)</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>ID</th><th>이름</th><th>난이도</th><th>슬롯</th><th>시간</th><th>사망위험</th><th>컨디션</th><th>속성</th><th>함정</th><th>보상 (금/식/명/경)</th></tr></thead>
+      <tbody>
+        <tr><td>q6</td><td>밀수단 추적</td><td>260</td><td>2~4</td><td>4단계</td><td>12%</td><td>22</td><td>⚡</td><td></td><td>285G / 38 / 18⭐ / 80XP</td></tr>
+        <tr><td>q7</td><td>귀족 저택 장기 경비</td><td>300</td><td>2~4</td><td>5단계</td><td>8%</td><td>15</td><td>✨</td><td></td><td>430G / 22 / 22⭐ / 90XP</td></tr>
+        <tr><td>q15</td><td>설원 요새 탈환</td><td>245</td><td>2~4</td><td>4단계</td><td>10%</td><td>24</td><td>🧊</td><td></td><td>265G / 42 / 16⭐ / 78XP</td></tr>
+        <tr><td>q16</td><td>성소 수호 임무</td><td>285</td><td>2~4</td><td>4단계</td><td>9%</td><td>16</td><td>✨</td><td></td><td>325G / 30 / 20⭐ / 88XP</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Lv4 티어 (난이도 331~560, 명성 180~349)</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>ID</th><th>이름</th><th>난이도</th><th>슬롯</th><th>시간</th><th>사망위험</th><th>컨디션</th><th>속성</th><th>함정</th><th>보상 (금/식/명/경)</th></tr></thead>
+      <tbody>
+        <tr><td>q8</td><td>던전 탐사</td><td>420</td><td>3~4</td><td>6단계</td><td>20%</td><td>28</td><td>🌑</td><td>🔧</td><td>660G / 55 / 35⭐ / 140XP</td></tr>
+        <tr><td>q9</td><td>북방 약탈자 토벌</td><td>520</td><td>3~4</td><td>5단계</td><td>18%</td><td>25</td><td>🧊</td><td></td><td>800G / 75 / 45⭐ / 160XP</td></tr>
+        <tr><td>q17</td><td>마법사 탑 잠입</td><td>390</td><td>2~4</td><td>5단계</td><td>15%</td><td>26</td><td>⚡</td><td>🔧</td><td>580G / 50 / 30⭐ / 130XP</td></tr>
+        <tr><td>q18</td><td>빙원 극지 원정</td><td>490</td><td>3~4</td><td>6단계</td><td>16%</td><td>32</td><td>🧊</td><td></td><td>720G / 80 / 40⭐ / 155XP</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Lv5 티어 (난이도 700+, 명성 350+)</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>ID</th><th>이름</th><th>난이도</th><th>슬롯</th><th>시간</th><th>사망위험</th><th>컨디션</th><th>속성</th><th>보상 (금/식/명/경)</th></tr></thead>
+      <tbody>
+        <tr><td>q10</td><td>🐉 드래곤 토벌</td><td>700</td><td>4 (필수)</td><td>8단계</td><td><strong>35%</strong></td><td>40</td><td>🔥</td><td>1,500G / 120 / 100⭐ / 300XP</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>퀘스트 실시간 소요시간 (분)</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>단계</th><th>기본</th><th>전력 2배+</th><th>전력 1.5배+</th><th>전력 1.2배+</th><th>전력 1.0배+</th><th>번개 일치</th></tr></thead>
+      <tbody>
+        <tr><td>1단계</td><td>5분</td><td>2분</td><td>2.75분</td><td>3.5분</td><td>4.25분</td><td>-25%</td></tr>
+        <tr><td>2단계</td><td>15분</td><td>6분</td><td>8.25분</td><td>10.5분</td><td>12.75분</td><td>-25%</td></tr>
+        <tr><td>3단계</td><td>30분</td><td>12분</td><td>16.5분</td><td>21분</td><td>25.5분</td><td>-25%</td></tr>
+        <tr><td>4단계</td><td>60분</td><td>24분</td><td>33분</td><td>42분</td><td>51분</td><td>-25%</td></tr>
+        <tr><td>5단계</td><td>90분</td><td>36분</td><td>49.5분</td><td>63분</td><td>76.5분</td><td>-25%</td></tr>
+        <tr><td>6단계</td><td>120분</td><td>48분</td><td>66분</td><td>84분</td><td>102분</td><td>-25%</td></tr>
+        <tr><td>7단계</td><td>180분</td><td>72분</td><td>99분</td><td>126분</td><td>153분</td><td>-25%</td></tr>
+        <tr><td>8단계</td><td>240분</td><td>96분</td><td>132분</td><td>168분</td><td>204분</td><td>-25%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── 건물 / 룸 ── -->
+  <h2 id="buildings"><span class="icon">🏗</span> 건물 / 룸</h2>
+
+  <h3>건물 (5종)</h3>
+  <p class="note">업그레이드 비용 공식: base × 2^currentLevel (Lv1→2배, Lv2→4배, Lv3→8배)</p>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>건물</th><th>아이콘</th><th>기본비용</th><th>Lv1 효과</th><th>Lv2 효과</th><th>Lv3 효과</th><th>Lv4 효과</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>길드 홀</strong></td><td>🏰</td><td>500G</td>
+          <td>동시 계약 2개</td><td>동시 계약 3개</td><td>동시 계약 4개</td><td>동시 계약 5개</td>
+        </tr>
+        <tr>
+          <td><strong>병영</strong></td><td>⛺</td><td>300G</td>
+          <td>3일마다 1명</td><td>3일마다 2명</td><td>2일마다 3명</td><td>2일마다 4명</td>
+        </tr>
+        <tr>
+          <td><strong>훈련소</strong></td><td>⚔️</td><td>400G</td>
+          <td>XP +0%</td><td>XP +30%</td><td>XP +70%</td><td>XP +120%</td>
+        </tr>
+        <tr>
+          <td><strong>선술집</strong></td><td>🍺</td><td>600G</td>
+          <td>D~C급</td><td>D~B급</td><td>D~A급</td><td>D~S급</td>
+        </tr>
+        <tr>
+          <td><strong>의무소</strong></td><td>❤️‍🩹</td><td>400G</td>
+          <td>컨디션 +8/일</td><td>+15/일</td><td>+25/일</td><td>+40/일</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>룸 (3종)</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>룸</th><th>아이콘</th><th>Lv1 업그레이드</th><th>Lv2 업그레이드</th><th>Lv1 효과</th><th>Lv2 효과</th><th>Lv3 효과</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>식당</strong></td><td>🍖</td><td>200G</td><td>500G</td>
+          <td>최대 6명 고용</td><td>최대 9명, 도착 +1</td><td>최대 12명, 도착 +2</td>
+        </tr>
+        <tr>
+          <td><strong>훈련소 룸</strong></td><td>⚔️</td><td>150G</td><td>350G</td>
+          <td>XP +1/일 (2명)</td><td>XP +3/일 (4명)</td><td>XP +6/일 (6명)</td>
+        </tr>
+        <tr>
+          <td><strong>길드마스터룸</strong></td><td>👑</td><td>500G</td><td>1,200G</td>
+          <td>호감도 +1/일 (1명)</td><td>호감도 +2/일 (2명)</td><td>호감도 +3/일 (3명)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="info-box info-gold">
+    <strong>길드마스터룸 최대 레벨</strong>은 현재 길드 레벨에 종속됨 (min(3, guildLevel)).
+    길드 Lv1이면 마스터룸을 Lv1까지만 올릴 수 있음.
+  </div>
+
+  <!-- ── 경제 시스템 ── -->
+  <h2 id="economy"><span class="icon">💰</span> 경제 시스템</h2>
+
+  <div class="card-grid cols-3">
+    <div class="card">
+      <div style="font-size:22px;">💰</div>
+      <h3 style="margin-top:8px;margin-bottom:8px;">금화</h3>
+      <ul class="dot-list">
+        <li>건물 건설·업그레이드</li>
+        <li>용병 고용 비용</li>
+        <li>무기 업그레이드</li>
+        <li>도착 새로고침 (50G)</li>
+        <li>사망 장례 비용 차감</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div style="font-size:22px;">🌾</div>
+      <h3 style="margin-top:8px;margin-bottom:8px;">식량</h3>
+      <ul class="dot-list">
+        <li>용병 1명당 5/일 소비</li>
+        <li>파견 중 추가 소비</li>
+        <li>퀘스트 보상으로 획득</li>
+        <li>고갈 시 컨디션 급락</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div style="font-size:22px;">⭐</div>
+      <h3 style="margin-top:8px;margin-bottom:8px;">명성</h3>
+      <ul class="dot-list">
+        <li>퀘스트 성공으로 획득</li>
+        <li>길드 레벨 업의 척도</li>
+        <li>0→Lv1, 30→Lv2, 80→Lv3</li>
+        <li>180→Lv4, 350→Lv5</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>수입·지출 구조</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>항목</th><th>수입(+)</th><th>지출(-)</th><th>비고</th></tr></thead>
+      <tbody>
+        <tr><td>퀘스트 완료</td><td>gold × duration</td><td>—</td><td>등급별 일당 × 소요일수</td></tr>
+        <tr><td>용병 일급</td><td>—</td><td>dailyWage/일</td><td>파견 중 미지급</td></tr>
+        <tr><td>용병 사망</td><td>—</td><td>deathCost</td><td>D=80G, C=150G, B=280G, A=500G, S=1000G</td></tr>
+        <tr><td>건물 건설</td><td>—</td><td>기본비용</td><td>최초 1회</td></tr>
+        <tr><td>건물 업그레이드</td><td>—</td><td>base × 2^lv</td><td>Lv 올릴수록 기하급수적</td></tr>
+        <tr><td>무기 업그레이드</td><td>—</td><td>80~280G</td><td>직업별 상이</td></tr>
+        <tr><td>도착 새로고침</td><td>—</td><td>50G</td><td>즉시 실행</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>퀘스트 급여 단가 (등급별 1일 보상)</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>퀘스트 난이도</th><th>D</th><th>C</th><th>B</th><th>A</th><th>S</th></tr></thead>
+      <tbody>
+        <tr><td>1일당 지급</td><td>15G</td><td>30G</td><td>58G</td><td>100G</td><td>175G</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── 전투 공식 ── -->
+  <h2 id="formulas"><span class="icon">📊</span> 전투 공식</h2>
+
+  <h3>성공률 계산</h3>
+  <div class="formula">// 기본 성공률
+base = min(95, powerRatio × 75 + 10)   // powerRatio = totalEffPower / quest.difficulty
+
+// 직업 보너스
+성직자 포함 → +8%
+전사 포함   → +3%
+도적 포함 (함정·고컨디션소모 퀘스트) → +10%
+
+// 속성 일치 보너스 (용병마다)
+불=+13%, 얼음=+8%, 번개=+9%, 자연=+10%, 암흑=+11%, 빛=+14%
+암흑 + trapFocus 퀘스트: 추가 +8%/명
+trapFocus 퀘스트 totalTrap≥80: +10%, ≥50: +5%
+
+// 슬롯 채움 페널티
+fillRatio < 0.5  → -15%
+fillRatio < 0.75 → -5%
+
+// 컨디션 페널티
+avgCondition < 50 → -10%
+avgCondition < 70 → -5%
+
+최종 = clamp(5, 95)</div>
+
+  <h3>사망 위험 계산</h3>
+  <div class="formula">// 기본: quest.deathRisk (퀘스트별 기본 사망률)
+
+// 0. 전력 비율 보정
+powerRatio < 0.4  → ×5.0 (학살)
+powerRatio < 0.6  → ×3.0
+powerRatio < 0.8  → ×1.8
+powerRatio < 0.95 → ×1.2
+powerRatio ≥ 1.5  → ×0.6
+
+// 1. 퀘스트 종류별 요구 스탯
+함정형 (conditionDrain≥20): trapFactor = max(0.5, 1.6 - trapStat/35)
+전투형 (deathRisk≥0.12): atkFactor = max(0.55, 1.45 - atkStat/55)
+장기형 (duration≥4): durFactor = max(0.5, 1.35 - survStat/75)
+
+// 2. 개인 생존율
+× max(0.28, 1 - survStat/120)
+
+// 3. 파티 구성
+성직자 포함  → ×0.65
+전사 포함    → 비전사용병에게 ×0.82
+도적 포함    → 함정퀘에서 ×0.78
+
+// 4. 소규모 파티 페널티 (인원 < 3)
+backupPenalty = 1.0 + (1 - partySize/3) × (1.2 - survNorm×0.9)
+
+// 5. 협조성 보정
+coopFactor = max(0.72, 1.25 - avgCoop/65)
+
+// 6. 직업-퀘스트 미스매치
+마법사 (저위험·힐러 없음) → ×1.18
+성직자 → ×0.72
+전사   → ×0.88
+
+// 7. 파티 내 상대 전력 (약한 유닛이 먼저 쓰러짐)
+relStrength = mercEff / partyAvgEff</div>
+
+  <!-- ── 길드 레벨 ── -->
+  <h2 id="guild"><span class="icon">🏰</span> 길드 레벨 시스템</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>레벨</th><th>필요 명성</th><th>해금 최대 난이도</th><th>퀘스트 풀 수 (홀 Lv1~4)</th><th>주요 해금 컨텐츠</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Lv 1</strong></td><td>0</td><td>120</td><td>5 / 7 / 9 / 12</td><td>쥐 사냥·야간경비·상인호위·치유봉사·얼음동굴</td></tr>
+        <tr><td><strong>Lv 2</strong></td><td>30</td><td>210</td><td>↑</td><td>+도둑단·광산함정·독숲·번개정령</td></tr>
+        <tr><td><strong>Lv 3</strong></td><td>80</td><td>330</td><td>↑</td><td>+밀수단·귀족저택·설원탈환·성소수호</td></tr>
+        <tr><td><strong>Lv 4</strong></td><td>180</td><td>560</td><td>↑</td><td>+던전탐사·북방약탈자·마법사탑·빙원원정</td></tr>
+        <tr><td><strong>Lv 5</strong></td><td>350</td><td>무제한</td><td>↑</td><td>+드래곤 토벌 (최종 보스)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── 밸런스 참고 ── -->
+  <h2 id="balance"><span class="icon">⚖️</span> 밸런스 참고표</h2>
+
+  <h3>등급별 등장 확률 (선술집 레벨별)</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>선술집 레벨</th><th>D급</th><th>C급</th><th>B급</th><th>A급</th><th>S급</th></tr></thead>
+      <tbody>
+        <tr><td>Lv 0 (없음)</td><td>65%</td><td>30%</td><td>5%</td><td>0%</td><td>0%</td></tr>
+        <tr><td>Lv 1</td><td>60%</td><td>35%</td><td>5%</td><td>0%</td><td>0%</td></tr>
+        <tr><td>Lv 2</td><td>40%</td><td>40%</td><td>18%</td><td>2%</td><td>0%</td></tr>
+        <tr><td>Lv 3</td><td>25%</td><td>35%</td><td>28%</td><td>11%</td><td>1%</td></tr>
+        <tr><td>Lv 4</td><td>15%</td><td>25%</td><td>30%</td><td>25%</td><td>5%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>권장 파티 구성 (퀘스트 유형별)</h3>
+  <div class="card-grid cols-2">
+    <div class="card">
+      <h3 style="margin-top:0">⚔ 전투형 퀘스트</h3>
+      <ul class="dot-list">
+        <li>전사 1~2명 (탱커·생존보장)</li>
+        <li>마법사 or 궁수 (최대 딜)</li>
+        <li>성직자 (파티 사망률 -35%)</li>
+        <li>속성 일치: 불(+13%), 번개(+9%)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">🔧 함정형 퀘스트</h3>
+      <ul class="dot-list">
+        <li>도적 필수 (함정해제 최고)</li>
+        <li>궁수 보조 (함정 +함정해제 병행)</li>
+        <li>암흑 속성 일치 시 함정 적중 +15%</li>
+        <li>totalTrap ≥ 80 달성 시 성공률 +10%</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">🧊 장기 원정형</h3>
+      <ul class="dot-list">
+        <li>생존율 높은 용병 중심 구성</li>
+        <li>성직자 필수 (장기전 지속 회복)</li>
+        <li>드워프 종족 선호 (HP+15, 생존+10)</li>
+        <li>의무소 Lv3+ 권장 (복귀 후 빠른 회복)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">🐉 드래곤 토벌</h3>
+      <ul class="dot-list">
+        <li>S급 4명 (4슬롯 전체 필수)</li>
+        <li>🔥 불 속성 일치 (deathRisk -최대)</li>
+        <li>성직자 필수 (기본 사망 35%)</li>
+        <li>무기 T3 전부 권장</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ── 튜토리얼 ── -->
+  <h2 id="tutorial"><span class="icon">📖</span> 튜토리얼 흐름 (6단계)</h2>
+  <p>게임 최초 실행 시 6-step 멀티 스텝 튜토리얼 표시. 이전/건너뛰기/다음 내비게이션 제공.</p>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>단계</th><th>태그</th><th>제목</th><th>핵심 내용</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>🌑 세계관</td><td>중세 암흑 판타지의 세계</td><td>아이언홀드 설정 소개, 길드 창설 배경</td></tr>
+        <tr><td>2</td><td>🎯 목표</td><td>당신의 목표</td><td>명성·금화·용병 사망 벌금 핵심 규칙</td></tr>
+        <tr><td>3</td><td>🚶 고용</td><td>용병 고용하기</td><td>도착 패널, 고용·거절, 새로고침 50G</td></tr>
+        <tr><td>4</td><td>📜 퀘스트</td><td>계약 수행하기</td><td>파티 구성, 속성 일치, 함정 퀘스트</td></tr>
+        <tr><td>5</td><td>💰 경제</td><td>경제와 자원 관리</td><td>식량·금화 소비, 건물 업그레이드 루프</td></tr>
+        <tr><td>6</td><td>📈 성장</td><td>용병 성장과 전략</td><td>XP·레벨업, 무기 업그레이드, 속성 전략</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Footer -->
+  <div style="text-align:center;padding:20px 0;color:var(--text-faint);font-size:12px;">
+    4_GM · 아이언홀드 용병단 길드 기획서 · v1.1.2 · 2026-04-20<br>
+    React 18 + TypeScript · Vite · Tailwind CSS
+  </div>
+
+</div>
+
+<script>
+// Active sidebar link on scroll
+const sections = document.querySelectorAll('[id]')
+const links = document.querySelectorAll('.sidebar a')
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.remove('active'))
+      const a = document.querySelector(`.sidebar a[href="#${e.target.id}"]`)
+      if (a) a.classList.add('active')
+    }
+  })
+}, { threshold: 0.3 })
+sections.forEach(s => observer.observe(s))
+</script>
+</body>
+</html>
