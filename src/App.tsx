@@ -36,6 +36,7 @@ const gradeBg = (g: string) =>
 
 // 미션 급여: 등급별 1일당 지급액 (퀘스트 완료 시 duration만큼 정산)
 const MISSION_PAY_PER_DAY: Record<string, number> = { D: 15, C: 30, B: 58, A: 100, S: 175 }
+const ARRIVAL_REFRESH_COST = 150
 
 // 호감도 이모지
 const favEmoji = (fav: number) =>
@@ -68,6 +69,96 @@ const condBar = (cond: number) => {
     </div>
   )
 }
+
+
+// ── 오프닝 스텝 (게임 시작 시 모달) ──────────────────────────────────────────
+const INTRO_STEPS = [
+  {
+    icon: '🌑',
+    tag: '세계관',
+    title: '중세 암흑 판타지의 세계',
+    body: [
+      '험준한 산맥과 마족의 영토가 맞닿은 요새 도시 — 아이언홀드.',
+      '이 땅에는 전쟁, 야수, 함정, 부패한 귀족들이 끊임없이 용병을 필요로 한다.',
+      '당신은 도시 변두리의 낡은 건물을 사들여 용병단 길드를 세웠다.',
+      '아직 이름도 없는 작은 길드지만, 언젠가 이 땅에서 가장 강력한 용병단이 될 것이다.',
+    ],
+    tips: [],
+  },
+  {
+    icon: '🎯',
+    tag: '목표',
+    title: '당신의 목표',
+    body: [
+      '계약을 수행하고, 명성을 쌓고, 길드를 성장시켜라.',
+      '드래곤 토벌까지 — 살아남을 수 있다면.',
+    ],
+    tips: [
+      '명성(⭐)을 쌓아 길드 레벨을 올리세요',
+      '금화(💰)로 건물을 짓고 더 강한 용병을 유치하세요',
+      '용병이 죽으면 장례 보상금이 차감됩니다 — 무모한 파견은 금물',
+    ],
+  },
+]
+
+// ── 플레이 흐름 힌트 (상황에 맞게 자동 등장) ─────────────────────────────────
+const HINT_STEPS: { id: string; icon: string; tag: string; title: string; body: string; tips: string[] }[] = [
+  {
+    id: 'hire',
+    icon: '🚶',
+    tag: '용병 고용',
+    title: '용병이 문 앞에 찾아왔어요',
+    body: '왼쪽 패널에서 도착한 용병을 확인하고 고용해보세요.',
+    tips: [
+      '카드 클릭 → 상세 스탯 확인',
+      '[⚔ 고용] 클릭으로 즉시 영입, [✕] 로 거절',
+      '🔄 50G — 새 용병 목록으로 즉시 교체 가능',
+    ],
+  },
+  {
+    id: 'quest',
+    icon: '📜',
+    tag: '계약 수행',
+    title: '계약을 수주해봐요',
+    body: '용병을 슬롯에 배치하고 파견하면 실시간으로 퀘스트가 진행됩니다.',
+    tips: [
+      '용병 클릭 선택 → 슬롯 클릭 또는 드래그로 배치',
+      '속성 일치(✦) 시 성공률·보너스가 크게 오릅니다',
+      '함정 퀘스트(🔧)는 도적·궁수 필수',
+    ],
+  },
+  {
+    id: 'economy',
+    icon: '💰',
+    tag: '자원 관리',
+    title: '자원을 꼼꼼히 챙기세요',
+    body: '금화·식량·사기 세 가지를 동시에 관리해야 길드가 유지됩니다.',
+    tips: [
+      '식량 🌾: 용병 1명당 하루 5 소비 — 파견 중엔 추가',
+      '사기가 낮으면 퀘스트 성공률이 떨어집니다',
+      '건물 업그레이드(병영·선술집·의무소)로 효율을 높이세요',
+    ],
+  },
+  {
+    id: 'growth',
+    icon: '📈',
+    tag: '용병 성장',
+    title: '용병을 키워보세요',
+    body: '퀘스트 성공과 훈련으로 레벨업 — 모든 능력치가 오릅니다.',
+    tips: [
+      '훈련소에 배치하면 매일 경험치 획득',
+      '길드마스터룸 배치 → 호감도↑ → 실효 전력↑',
+      '무기 업그레이드(용병 상세 화면)로 스탯 강화',
+    ],
+  },
+]
+
+const HINT_STORAGE_KEY = 'sma_shown_hints'
+const loadShownHints = (): Set<string> => {
+  try { return new Set(JSON.parse(localStorage.getItem(HINT_STORAGE_KEY) ?? '[]')) } catch { return new Set() }
+}
+const persistShownHints = (s: Set<string>) =>
+  localStorage.setItem(HINT_STORAGE_KEY, JSON.stringify([...s]))
 
 // ── Building definitions ───────────────────────────────────────────────────
 
@@ -236,18 +327,18 @@ function MercCard({
       <div className="flex items-center gap-2">
         <div className="relative flex-shrink-0 flex flex-col items-center gap-0.5">
           <span className="text-xl leading-none">{RACE_ICONS[merc.race]}</span>
-          <span className="text-[13px] leading-none">{CLASS_ICONS[merc.class]}</span>
-          {isDeployed && <span className="absolute -top-1 -right-1 text-[12px]">⚔</span>}
+          <span className="text-sm leading-none">{CLASS_ICONS[merc.class]}</span>
+          {isDeployed && <span className="absolute -top-1 -right-1 text-sm">⚔</span>}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1 flex-wrap">
             <span className="text-sm font-bold text-white truncate">{merc.name}</span>
-            <span className={`text-[13px] font-bold px-1 rounded ${gradeBg(merc.grade)} text-white`}>{GRADE_STARS[merc.grade]}</span>
-            <span className="text-[13px] text-slate-500">Lv{merc.level}</span>
-            <span className={`text-[13px] font-bold ${ELEMENT_COLOR[merc.element]}`}>{ELEMENT_ICON[merc.element]}</span>
-            {matchElement && <span className="text-[12px] text-yellow-300 font-bold">✦일치</span>}
+            <span className={`text-sm font-bold px-1 rounded ${gradeBg(merc.grade)} text-white`}>{GRADE_STARS[merc.grade]}</span>
+            <span className="text-sm text-slate-500">Lv{merc.level}</span>
+            <span className={`text-sm font-bold ${ELEMENT_COLOR[merc.element]}`}>{ELEMENT_ICON[merc.element]}</span>
+            {matchElement && <span className="text-sm text-yellow-300 font-bold">✦일치</span>}
           </div>
-          <div className="text-[13px] mt-0.5 flex items-center gap-2" style={{ color: 'rgba(150,140,100,0.8)' }}>
+          <div className="text-sm mt-0.5 flex items-center gap-2" style={{ color: 'rgba(150,140,100,0.8)' }}>
             <span>⚔<span className="text-slate-300 font-semibold">{combatPower(merc)}</span></span>
             <span>💚<span className={merc.hp >= 70 ? 'text-emerald-400' : merc.hp >= 40 ? 'text-amber-400' : 'text-red-400'} style={{ fontWeight: 600 }}>{merc.hp}</span></span>
             {canTrap(merc) && merc.trap_disarm > 0 && (
@@ -258,10 +349,10 @@ function MercCard({
         </div>
         <div className="flex-shrink-0 text-right">
           {isDeployed
-            ? <div className="text-[13px] font-bold rounded px-1.5 py-0.5 text-white" style={{ background: 'rgba(14,165,233,0.4)', border: '1px solid rgba(14,165,233,0.6)' }}>⚔ 파견중</div>
+            ? <div className="text-sm font-bold rounded px-1.5 py-0.5 text-white" style={{ background: 'rgba(14,165,233,0.4)', border: '1px solid rgba(14,165,233,0.6)' }}>⚔ 파견중</div>
             : isInjured
-              ? <div className="text-[13px] font-bold rounded px-1.5 py-0.5 text-white" style={{ background: 'rgba(239,68,68,0.4)', border: '1px solid rgba(239,68,68,0.6)' }}>🤕 부상</div>
-              : <div className="text-[13px] font-bold text-amber-300">{MISSION_PAY_PER_DAY[merc.grade] ?? 15}G<span className="text-slate-600">/일</span></div>
+              ? <div className="text-sm font-bold rounded px-1.5 py-0.5 text-white" style={{ background: 'rgba(239,68,68,0.4)', border: '1px solid rgba(239,68,68,0.6)' }}>🤕 부상</div>
+              : <div className="text-sm font-bold text-amber-300">{MISSION_PAY_PER_DAY[merc.grade] ?? 15}G<span className="text-slate-600">/일</span></div>
           }
         </div>
       </div>
@@ -447,7 +538,7 @@ function App() {
   const [mercs, setMercs] = useState<Mercenary[]>(initialMercenaries)
   const [activeQuests, setActiveQuests] = useState<ActiveQuest[]>([])
   const [gateArrivals, setGateArrivals] = useState<Mercenary[]>(() =>
-    Array.from({ length: 2 }, () => generateMercenary(0))
+    Array.from({ length: 4 }, () => generateMercenary(0))
   )
   const [nextArrivalDay, setNextArrivalDay] = useState(4)
   const [buildings, setBuildings] = useState<GuildBuildings>({
@@ -464,6 +555,9 @@ function App() {
   const [selectedMercDetail, setSelectedMercDetail] = useState<Mercenary | null>(null)
   const [activeTab, setActiveTab] = useState<'quests' | 'buildings'>('quests')
   const [showTutorial, setShowTutorial] = useState(true)
+  const [tutorialStep, setTutorialStep] = useState(0)
+  const [activeHint, setActiveHint] = useState<typeof HINT_STEPS[0] | null>(null)
+  const shownHintsRef = useRef<Set<string>>(loadShownHints())
   const [draggingMercId, setDraggingMercId] = useState<string | null>(null)
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [showQuestModal, setShowQuestModal] = useState(false)
@@ -494,6 +588,35 @@ function App() {
 
   const log = (msg: string) => setQuestLog(prev => [...prev, msg].slice(-20))
 
+  const showHint = useCallback((id: string) => {
+    if (shownHintsRef.current.has(id)) return
+    const hint = HINT_STEPS.find(h => h.id === id)
+    if (!hint) return
+    shownHintsRef.current.add(id)
+    persistShownHints(shownHintsRef.current)
+    setActiveHint(hint)
+  }, [])
+
+  // 용병 고용 힌트: 인트로 닫힌 후 첫 도착 용병 확인 시
+  useEffect(() => {
+    if (!showTutorial && gateArrivals.length > 0) showHint('hire')
+  }, [showTutorial, gateArrivals.length, showHint])
+
+  // 퀘스트 힌트: 계약 관리 패널 처음 열 때
+  useEffect(() => {
+    if (showQuestModal) showHint('quest')
+  }, [showQuestModal, showHint])
+
+  // 자원 관리 힌트: Day 2로 넘어갈 때
+  useEffect(() => {
+    if (state.day >= 2) showHint('economy')
+  }, [state.day, showHint])
+
+  // 성장 힌트: 첫 퀘스트 성공 후
+  useEffect(() => {
+    if (questLog.some(l => l.startsWith('✅'))) showHint('growth')
+  }, [questLog, showHint])
+
   const hireMerc = (merc: Mercenary) => {
     if (state.gold < merc.cost) { log(`금화 부족: ${merc.name} 고용 불가 (${merc.cost}G 필요)`); return }
     const hireCap = maxHireCap(roomLevels['식당'] ?? 1)
@@ -502,6 +625,15 @@ function App() {
     setMercs(prev => [...prev, { ...merc, status: '대기중', room: '식당' }])
     setGateArrivals(prev => prev.filter(m => m.id !== merc.id))
     log(`${merc.name}(${merc.grade}급 ${merc.class}) 고용! -${merc.cost}G`)
+  }
+
+  const refreshArrivals = () => {
+    if (state.gold < ARRIVAL_REFRESH_COST) { log(`금화 부족: 새로고침 불가 (${ARRIVAL_REFRESH_COST}G)`); return }
+    setState(prev => ({ ...prev, gold: prev.gold - ARRIVAL_REFRESH_COST }))
+    const diningLv = roomLevels['식당'] ?? 1
+    const cnt = arrivalCount(buildings.barracks) + diningArrivalBonus(diningLv)
+    setGateArrivals(Array.from({ length: cnt }, () => generateMercenary(buildings.tavern + diningTavernBonus(diningLv))))
+    log(`🔄 도착 목록 새로고침 (-${ARRIVAL_REFRESH_COST}G)`)
   }
 
   const dismissArrival = (mercId: string) => {
@@ -558,10 +690,7 @@ function App() {
       log('용병을 최소 1명 배치해야 파견할 수 있습니다.')
       return
     }
-    if (activeQuests.length >= maxSimultaneousQuests(buildings.hall)) {
-      log('길드 홀을 업그레이드하면 더 많은 계약을 동시에 수행할 수 있습니다.')
-      return
-    }
+
     const assignedMercs = slots.map(id => mercs.find(m => m.id === id)).filter(Boolean) as Mercenary[]
     const durationMs = calcQuestDurationMs(quest, assignedMercs)
     const completesAt = Date.now() + durationMs
@@ -960,11 +1089,11 @@ function App() {
                     <div>
                       <p className="text-sm font-bold text-white">슬롯 {idx + 1}</p>
                       {slot ? (
-                        <p className="text-[13px] text-slate-400 mt-0.5">
+                        <p className="text-sm text-slate-400 mt-0.5">
                           {slot.name} · {slot.mercs.length}명 · {new Date(slot.timestamp).toLocaleDateString('ko-KR')} {new Date(slot.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
                         </p>
                       ) : (
-                        <p className="text-[13px] text-slate-600 mt-0.5">빈 슬롯</p>
+                        <p className="text-sm text-slate-600 mt-0.5">빈 슬롯</p>
                       )}
                     </div>
                     <div className="flex gap-1.5">
@@ -985,7 +1114,7 @@ function App() {
                     </div>
                   </div>
                   {slot && (
-                    <div className="flex gap-2 text-[13px] text-slate-500">
+                    <div className="flex gap-2 text-sm text-slate-500">
                       <span>🏅 명성 {slot.campaignState.fame}</span>
                       <span>💰 {slot.campaignState.gold}G</span>
                       <span>⚔️ 파견 {slot.activeQuests.length}건</span>
@@ -998,128 +1127,217 @@ function App() {
         </div>
       )}
 
-      {/* Tutorial */}
-      {showTutorial && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
-          <div className="w-full max-w-2xl rounded-2xl p-6" style={{ background: '#13131f', border: '1px solid rgba(251,191,36,0.25)' }}>
-            <div className="flex items-start justify-between mb-4">
-              <h2 className="text-xl font-bold text-white">🏰 용병단 길드 운영 가이드</h2>
-              <button onClick={() => setShowTutorial(false)} className="text-slate-400 hover:text-white text-lg">×</button>
+      {/* ── 오프닝 인트로 모달 (세계관 + 목표) ── */}
+      {showTutorial && (() => {
+        const step = INTRO_STEPS[tutorialStep]
+        const isLast = tutorialStep === INTRO_STEPS.length - 1
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/92 p-4">
+            <div className="w-full max-w-lg rounded-2xl overflow-hidden flex flex-col"
+              style={{ background: '#0d0b1c', border: '1px solid rgba(120,80,200,0.35)', boxShadow: '0 0 60px rgba(80,40,160,0.2)', maxHeight: '85vh' }}>
+
+              {/* Progress dots */}
+              <div className="flex justify-center gap-2 pt-4 pb-1 flex-shrink-0">
+                {INTRO_STEPS.map((_, i) => (
+                  <div key={i} className="rounded-full transition-all duration-300"
+                    style={{ width: i === tutorialStep ? 20 : 6, height: 6,
+                      background: i <= tutorialStep ? 'linear-gradient(90deg,#7c3aed,#a855f7)' : 'rgba(255,255,255,0.12)' }} />
+                ))}
+              </div>
+
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 pt-3 pb-3 flex-shrink-0">
+                <div className="flex items-center gap-3">
+                  <span className="text-4xl leading-none">{step.icon}</span>
+                  <div>
+                    <span className="text-sm font-bold px-2 py-0.5 rounded-full"
+                      style={{ background: 'rgba(120,80,200,0.25)', color: '#c4b5fd', border: '1px solid rgba(120,80,200,0.4)' }}>
+                      {step.tag}
+                    </span>
+                    <h2 className="text-base font-bold text-white mt-1">{step.title}</h2>
+                  </div>
+                </div>
+                <button onClick={() => setShowTutorial(false)}
+                  className="text-slate-600 hover:text-slate-400 text-xl leading-none flex-shrink-0 ml-4">×</button>
+              </div>
+
+              {/* Body */}
+              <div className="px-6 pb-2 overflow-y-auto flex-1 space-y-3">
+                <div className="rounded-xl p-4 space-y-2"
+                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                  {step.body.map((line, i) => (
+                    <p key={i} className="text-sm leading-relaxed" style={{ color: 'rgba(200,190,170,0.85)' }}>{line}</p>
+                  ))}
+                </div>
+                {step.tips.length > 0 && (
+                  <div className="space-y-1.5">
+                    {step.tips.map((tip, i) => (
+                      <div key={i} className="flex items-start gap-2 rounded-lg px-3 py-2"
+                        style={{ background: 'rgba(120,80,200,0.08)', border: '1px solid rgba(120,80,200,0.15)' }}>
+                        <span className="text-purple-400 font-bold flex-shrink-0 text-sm">›</span>
+                        <p className="text-sm" style={{ color: 'rgba(190,180,210,0.85)' }}>{tip}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="flex gap-2 px-6 py-4 flex-shrink-0"
+                style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                {tutorialStep > 0 && (
+                  <button onClick={() => setTutorialStep(s => s - 1)}
+                    className="rounded-xl px-4 py-2.5 text-sm font-bold transition hover:brightness-125"
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(160,150,180,0.8)' }}>
+                    ← 이전
+                  </button>
+                )}
+                <button onClick={() => setShowTutorial(false)}
+                  className="rounded-xl px-4 py-2.5 text-sm font-bold transition hover:brightness-125"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(100,100,100,0.5)' }}>
+                  건너뛰기
+                </button>
+                <div className="flex-1" />
+                {!isLast ? (
+                  <button onClick={() => setTutorialStep(s => s + 1)}
+                    className="rounded-xl px-6 py-2.5 text-sm font-bold text-white transition hover:brightness-110 active:scale-95"
+                    style={{ background: 'linear-gradient(135deg,#5b21b6,#7c3aed)', boxShadow: '0 0 16px rgba(124,58,237,0.35)' }}>
+                    다음 →
+                  </button>
+                ) : (
+                  <button onClick={() => { setShowTutorial(false); setTutorialStep(0) }}
+                    className="rounded-xl px-6 py-2.5 text-sm font-bold text-white transition hover:brightness-110 active:scale-95"
+                    style={{ background: 'linear-gradient(135deg,#b45309,#d97706)', boxShadow: '0 0 16px rgba(217,119,6,0.35)' }}>
+                    🏰 길드 운영 시작!
+                  </button>
+                )}
+              </div>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 text-sm text-slate-300">
-              {[
-                ['📋 계약 수행', '퀘스트에 용병을 배치해 파견하세요. 여러 계약을 동시에 진행할 수 있습니다.'],
-                ['💀 사망 비용', '퀘스트 실패 시 용병이 전사할 수 있습니다. 장례 보상금이 차감됩니다.'],
-                ['📈 성장 시스템', '퀘스트 성공 시 경험치를 획득해 레벨업합니다. 저급 용병도 육성 가능!'],
-                ['🏥 컨디션', '컨디션이 낮으면 실제 전투력이 하락합니다. 의무소를 지어 회복시키세요.'],
-                ['🚶 용병 도착', '며칠마다 새 용병이 문 앞에 도착합니다. 병영을 업그레이드하면 자주, 많이 옵니다.'],
-                ['🏗 건물 확장', '금화로 건물을 건설·업그레이드하면 더 좋은 용병, 더 많은 계약이 가능합니다.'],
-              ].map(([title, desc]) => (
-                <div key={title} className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                  <p className="font-bold text-white mb-1">{title}</p>
-                  <p className="text-sm text-slate-400">{desc}</p>
+          </div>
+        )
+      })()}
+
+      {/* ── 플레이 힌트 카드 (우하단 플로팅) ── */}
+      {activeHint && (
+        <div className="fixed bottom-6 right-6 z-40 w-72 rounded-2xl overflow-hidden shadow-2xl"
+          style={{ background: '#0f0d20', border: '1px solid rgba(120,80,200,0.45)', boxShadow: '0 0 30px rgba(80,40,160,0.25)' }}>
+          <div className="flex items-center justify-between px-4 py-2.5"
+            style={{ background: 'rgba(120,80,200,0.15)', borderBottom: '1px solid rgba(120,80,200,0.2)' }}>
+            <div className="flex items-center gap-2">
+              <span className="text-lg leading-none">{activeHint.icon}</span>
+              <span className="text-sm font-bold" style={{ color: '#c4b5fd' }}>{activeHint.tag}</span>
+            </div>
+            <button onClick={() => setActiveHint(null)} className="text-slate-600 hover:text-slate-400 text-base leading-none">×</button>
+          </div>
+          <div className="px-4 py-3 space-y-2">
+            <p className="text-sm font-bold text-white">{activeHint.title}</p>
+            <p className="text-sm leading-relaxed" style={{ color: 'rgba(180,170,150,0.85)' }}>{activeHint.body}</p>
+            <div className="space-y-1 pt-1">
+              {activeHint.tips.map((tip, i) => (
+                <div key={i} className="flex items-start gap-1.5">
+                  <span className="text-purple-400 font-bold text-sm flex-shrink-0 mt-0.5">›</span>
+                  <p className="text-sm" style={{ color: 'rgba(160,150,200,0.8)' }}>{tip}</p>
                 </div>
               ))}
             </div>
-            <button onClick={() => setShowTutorial(false)}
-              className="mt-5 w-full rounded-xl py-2.5 font-bold text-white transition hover:brightness-110"
-              style={{ background: 'linear-gradient(135deg,#b45309,#d97706)' }}>
-              시작하기
+          </div>
+          <div className="px-4 pb-3">
+            <button onClick={() => setActiveHint(null)}
+              className="w-full rounded-lg py-1.5 text-sm font-bold text-white transition hover:brightness-110"
+              style={{ background: 'linear-gradient(135deg,#5b21b6,#7c3aed)' }}>
+              알겠어요 ✓
             </button>
           </div>
         </div>
       )}
 
       {/* ── Header ───────────────────────────────────── */}
-      <header className="sticky top-0 z-40 flex items-center gap-4 px-5 border-b backdrop-blur-xl"
-        style={{ background: 'rgba(6,6,14,0.97)', borderColor: 'rgba(255,255,255,0.06)', height: 52 }}>
+      <header className="sticky top-0 z-40 flex items-center gap-3 px-4 border-b backdrop-blur-xl"
+        style={{ background: 'rgba(6,6,14,0.97)', borderColor: 'rgba(255,255,255,0.06)', height: 48 }}>
         {/* 타이틀 */}
-        <div className="flex items-center gap-2.5 flex-shrink-0">
-          <span className="text-xl">🏰</span>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className="text-lg">🏰</span>
           <div>
-            <h1 className="text-[13px] font-extrabold text-white leading-none tracking-wide">용병단 길드</h1>
-            <p className="text-[12px] tracking-widest uppercase mt-0.5" style={{ color: 'rgba(150,110,50,0.7)' }}>Medieval Mercenary Manager</p>
+            <h1 className="text-sm font-extrabold text-white leading-none tracking-wide">용병단 길드</h1>
+            <p className="text-xs tracking-widest uppercase mt-0.5" style={{ color: 'rgba(150,110,50,0.6)' }}>Medieval Mercenary Manager</p>
           </div>
         </div>
 
-        {/* 구분선 */}
-        <div className="w-px h-6 flex-shrink-0" style={{ background: 'rgba(255,255,255,0.08)' }} />
-
-        {/* 자원 스탯 그룹 */}
-        <div className="flex items-center gap-1">
-          {[
-            { icon: '📅', v: `Day ${state.day}`, c: 'text-cyan-300', bg: 'rgba(34,211,238,0.08)', border: 'rgba(34,211,238,0.18)' },
-            { icon: '💰', v: `${state.gold}G`, c: 'text-amber-300', bg: 'rgba(251,191,36,0.08)', border: 'rgba(251,191,36,0.2)' },
-            { icon: '🌾', v: `${state.food}`, c: 'text-emerald-300', bg: 'rgba(34,197,94,0.08)', border: 'rgba(34,197,94,0.18)' },
-            { icon: '⭐', v: `${state.fame}`, c: 'text-fuchsia-300', bg: 'rgba(217,70,239,0.08)', border: 'rgba(217,70,239,0.18)' },
-            { icon: '❤️', v: `${state.morale}%`, c: 'text-rose-300', bg: 'rgba(244,63,94,0.08)', border: 'rgba(244,63,94,0.18)' },
-            { icon: '👥', v: `${mercs.length}명`, c: 'text-slate-300', bg: 'rgba(255,255,255,0.05)', border: 'rgba(255,255,255,0.1)' },
-          ].map(({ icon, v, c, bg, border }) => (
-            <div key={icon} className="flex items-center gap-1 rounded-lg px-2 py-1"
-              style={{ background: bg, border: `1px solid ${border}` }}>
-              <span className="text-sm leading-none">{icon}</span>
-              <span className={`text-[13px] font-bold ${c}`}>{v}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* 구분선 */}
-        <div className="w-px h-6 flex-shrink-0" style={{ background: 'rgba(255,255,255,0.08)' }} />
-
-        {/* 길드 레벨 */}
+        {/* 길드 레벨 (타이틀 옆) */}
         {(() => {
           const gLv = computeGuildLevel(state.fame)
           const nextFame = GUILD_LEVEL_FAME[gLv] ?? null
           const pct = nextFame ? Math.round(state.fame / nextFame * 100) : 100
           return (
-            <div className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 flex-shrink-0"
-              style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.22)' }}>
-              <span className="text-[13px] font-extrabold text-amber-300">Lv{gLv}</span>
+            <div className="flex items-center gap-1.5 rounded-lg px-2 py-1 flex-shrink-0"
+              style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)' }}>
+              <span className="text-sm font-extrabold text-amber-300">Lv{gLv}</span>
               {nextFame !== null ? (
-                <div className="flex flex-col gap-0.5">
-                  <div className="w-20 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                <>
+                  <div className="w-14 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
                     <div className="h-full rounded-full" style={{ width: `${pct}%`, background: 'linear-gradient(90deg,#b45309,#f59e0b)' }} />
                   </div>
-                  <span className="text-[12px]" style={{ color: 'rgba(180,140,60,0.7)' }}>{state.fame}/{nextFame}⭐</span>
-                </div>
-              ) : <span className="text-[13px] text-amber-500 font-bold">MAX</span>}
+                  <span className="text-xs" style={{ color: 'rgba(180,140,60,0.65)' }}>{state.fame}/{nextFame}</span>
+                </>
+              ) : <span className="text-xs text-amber-500 font-bold">MAX</span>}
             </div>
           )
         })()}
 
-        {/* 우측 버튼 그룹 */}
-        <div className="ml-auto flex items-center gap-1.5">
-          <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.1)' }}>
+        {/* 좌측 액션 버튼 */}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <button onClick={advanceDay}
+            className="rounded-lg px-4 py-1.5 text-sm font-extrabold text-white transition hover:brightness-110 active:scale-95"
+            style={{
+              background: 'linear-gradient(135deg,#6d28d9,#9333ea)',
+              boxShadow: '0 0 14px rgba(139,92,246,0.3)',
+            }}>
+            다음 날 ▶
+          </button>
+        </div>
+
+        {/* 자원 스탯 그룹 — 우측 정렬 */}
+        <div className="ml-auto flex items-center gap-1">
+          {[
+            { icon: '📅', v: `Day ${state.day}`, c: 'text-cyan-300', bg: 'rgba(34,211,238,0.08)', border: 'rgba(34,211,238,0.15)' },
+            { icon: '💰', v: `${state.gold}G`, c: 'text-amber-300', bg: 'rgba(251,191,36,0.08)', border: 'rgba(251,191,36,0.18)' },
+            { icon: '🌾', v: `${state.food}`, c: 'text-emerald-300', bg: 'rgba(34,197,94,0.08)', border: 'rgba(34,197,94,0.15)' },
+            { icon: '⭐', v: `${state.fame}`, c: 'text-fuchsia-300', bg: 'rgba(217,70,239,0.08)', border: 'rgba(217,70,239,0.15)' },
+            { icon: '❤️', v: `${state.morale}%`, c: 'text-rose-300', bg: 'rgba(244,63,94,0.08)', border: 'rgba(244,63,94,0.15)' },
+            { icon: '👥', v: `${mercs.length}명`, c: 'text-slate-300', bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.08)' },
+          ].map(({ icon, v, c, bg, border }) => (
+            <div key={icon} className="flex items-center gap-1 rounded-md px-1.5 py-1"
+              style={{ background: bg, border: `1px solid ${border}` }}>
+              <span className="text-sm leading-none">{icon}</span>
+              <span className={`text-xs font-bold ${c}`}>{v}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* 우측 유틸 버튼 */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <div className="flex items-center rounded-md overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
             <button onClick={() => setZoomDelta(d => Math.max(-0.4, d - 0.1))}
-              className="px-2 py-1.5 text-[13px] font-bold transition hover:brightness-125"
-              style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(180,180,180,0.85)', borderRight: '1px solid rgba(255,255,255,0.08)' }}>
+              className="px-1.5 py-1 text-sm font-bold transition hover:brightness-125"
+              style={{ background: 'rgba(255,255,255,0.04)', color: 'rgba(160,160,160,0.8)', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
               −
             </button>
-            <span className="px-2 text-[12px]" style={{ color: 'rgba(160,160,160,0.7)' }}>{Math.round((scale + zoomDelta) * 100)}%</span>
+            <span className="px-1.5 text-xs" style={{ color: 'rgba(140,140,140,0.6)' }}>{Math.round((scale + zoomDelta) * 100)}%</span>
             <button onClick={() => setZoomDelta(d => Math.min(0.5, d + 0.1))}
-              className="px-2 py-1.5 text-[13px] font-bold transition hover:brightness-125"
-              style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(180,180,180,0.85)', borderLeft: '1px solid rgba(255,255,255,0.08)' }}>
+              className="px-1.5 py-1 text-sm font-bold transition hover:brightness-125"
+              style={{ background: 'rgba(255,255,255,0.04)', color: 'rgba(160,160,160,0.8)', borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
               +
             </button>
           </div>
           <button onClick={() => setShowTutorial(true)}
-            className="rounded-lg px-3 py-1.5 text-[13px] transition hover:text-white"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(140,140,140,0.8)' }}>
+            className="rounded-md px-2 py-1 text-xs transition hover:text-white"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', color: 'rgba(120,120,120,0.7)' }}>
             ?
           </button>
           <button onClick={() => setShowSaveModal(true)}
-            className="rounded-lg px-3 py-1.5 text-[13px] transition hover:brightness-110"
-            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(180,180,180,0.85)' }}>
+            className="rounded-md px-2 py-1 text-xs transition hover:brightness-110"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(160,160,160,0.8)' }}>
             💾
-          </button>
-          <button onClick={advanceDay}
-            className="rounded-xl px-5 py-1.5 text-[12px] font-extrabold text-white transition hover:brightness-110 active:scale-95"
-            style={{
-              background: 'linear-gradient(135deg,#6d28d9,#9333ea)',
-              boxShadow: '0 0 18px rgba(139,92,246,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
-              letterSpacing: '0.02em'
-            }}>
-            다음 날 ▶
           </button>
         </div>
       </header>
@@ -1152,11 +1370,11 @@ function App() {
         }} />
 
         {/* ── Arrival panel (left) ── */}
-        <div className="absolute flex flex-col justify-end gap-2 pb-2" style={{ left: 10, bottom: 48, width: '38%', maxHeight: 310 }}>
+        <div className="absolute flex flex-col justify-end gap-2 pb-2" style={{ left: 10, bottom: 48, width: '40%', maxHeight: 360 }}>
           {/* 버튼 행 */}
           <div className="flex gap-1.5">
             <button onClick={() => setShowQuestModal(true)}
-              className="rounded-xl px-3 py-2 text-[13px] font-bold text-white transition-all hover:brightness-115 active:scale-95 relative"
+              className="rounded-xl px-3 py-2 text-sm font-bold text-white transition-all hover:brightness-115 active:scale-95 relative"
               style={{
                 background: 'linear-gradient(135deg,#1e3a5f,#1d4ed8)',
                 border: '1px solid rgba(59,130,246,0.55)',
@@ -1166,14 +1384,14 @@ function App() {
               }}>
               📜 계약 관리
               {(activeQuests.length > 0 || Object.keys(pendingAssign).some(k => (pendingAssign[k] ?? []).some(Boolean))) && (
-                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-[12px] font-extrabold flex items-center justify-center text-white"
+                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-sm font-extrabold flex items-center justify-center text-white"
                   style={{ background: 'linear-gradient(135deg,#dc2626,#ef4444)', boxShadow: '0 0 6px rgba(239,68,68,0.5)' }}>
                   {activeQuests.length + Object.keys(pendingAssign).filter(k => (pendingAssign[k] ?? []).some(Boolean)).length}
                 </span>
               )}
             </button>
             <button onClick={() => setShowMercModal(true)}
-              className="rounded-xl px-3 py-2 text-[13px] font-bold text-white transition-all hover:brightness-115 active:scale-95"
+              className="rounded-xl px-3 py-2 text-sm font-bold text-white transition-all hover:brightness-115 active:scale-95"
               style={{
                 background: 'linear-gradient(135deg,#14532d,#166534)',
                 border: '1px solid rgba(34,197,94,0.45)',
@@ -1184,7 +1402,7 @@ function App() {
               👥 용병 목록
             </button>
             <button onClick={() => setShowLogModal(true)}
-              className="rounded-xl px-3 py-2 text-[13px] font-semibold transition-all hover:brightness-115 active:scale-95"
+              className="rounded-xl px-3 py-2 text-sm font-semibold transition-all hover:brightness-115 active:scale-95"
               style={{
                 background: 'rgba(255,255,255,0.07)',
                 border: '1px solid rgba(255,255,255,0.12)',
@@ -1197,10 +1415,17 @@ function App() {
           </div>
           <div className="flex items-center gap-2 mb-0.5">
             <div className="flex-1 h-px" style={{ background: 'rgba(180,100,20,0.3)' }} />
-            <p className="text-[12px] font-bold uppercase tracking-widest" style={{ color: 'rgba(200,140,40,0.7)' }}>
-              ✦ 용병 도착 ✦
-            </p>
+            <p className="text-sm font-bold uppercase tracking-widest" style={{ color: 'rgba(200,140,40,0.7)' }}>✦ 용병 도착 ✦</p>
             <div className="flex-1 h-px" style={{ background: 'rgba(180,100,20,0.3)' }} />
+            <button onClick={refreshArrivals}
+              className="text-sm rounded-lg px-2 py-1 font-semibold transition hover:brightness-125 flex-shrink-0"
+              style={{
+                background: state.gold >= ARRIVAL_REFRESH_COST ? 'rgba(251,191,36,0.12)' : 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(180,130,30,0.35)',
+                color: state.gold >= ARRIVAL_REFRESH_COST ? 'rgba(251,191,36,0.85)' : 'rgba(120,90,30,0.5)'
+              }}>
+              🔄 {ARRIVAL_REFRESH_COST}G
+            </button>
           </div>
           {gateArrivals.length === 0 ? (
             <p className="text-center text-sm py-3" style={{ color: 'rgba(100,80,50,0.5)' }}>
@@ -1217,48 +1442,57 @@ function App() {
                   boxShadow: m.grade === 'S' ? '0 0 14px rgba(217,70,239,0.15)' : m.grade === 'A' ? '0 0 12px rgba(251,191,36,0.12)' : 'none'
                 }}>
                 <div className="flex items-center gap-2.5 cursor-pointer hover:brightness-110"
-                  style={{ padding: '8px 12px' }}
+                  style={{ padding: '10px 14px' }}
                   onClick={() => setPreviewArrival(m)}>
                   <span className="text-2xl leading-none flex-shrink-0">{RACE_ICONS[m.race]}</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1 flex-wrap">
                       <span className="text-sm font-bold text-white truncate max-w-[90px]">{m.name}</span>
-                      <span className={`text-[12px] font-bold px-1 py-0.5 rounded text-white flex-shrink-0 ${gradeBg(m.grade)}`}>{GRADE_STARS[m.grade] ?? m.grade}</span>
+                      <span className={`text-sm font-bold px-1 py-0.5 rounded text-white flex-shrink-0 ${gradeBg(m.grade)}`}>{GRADE_STARS[m.grade] ?? m.grade}</span>
                       <span className={`text-sm font-bold flex-shrink-0 ${ELEMENT_COLOR[m.element]}`}>{ELEMENT_ICON[m.element]}</span>
                     </div>
-                    <p className="text-[13px] mt-0.5 truncate" style={{ color: 'rgba(140,110,70,0.85)' }}>{CLASS_ICONS[m.class]} {m.class} · {m.race}</p>
-                    <div className="flex gap-2 text-[13px] mt-0.5">
+                    <p className="text-sm mt-0.5 truncate" style={{ color: 'rgba(140,110,70,0.85)' }}>{CLASS_ICONS[m.class]} {m.class} · {m.race}</p>
+                    <div className="flex gap-2 text-sm mt-0.5">
                       <span className="text-cyan-300">⚔{m.power}</span>
                       {m.trap_disarm > 0 && <span className="text-purple-300">🔧{m.trap_disarm}</span>}
                       <span className="text-amber-300 ml-auto">{m.cost === 0 ? '무료' : `${m.cost}G`}</span>
                     </div>
                   </div>
                   <div className="text-center flex-shrink-0">
-                    <div className="text-[13px] font-bold rounded-lg px-2.5 py-1.5 text-white"
+                    <div className="text-sm font-bold rounded-lg px-2.5 py-1.5 text-white"
                       style={{ background: 'linear-gradient(135deg,rgba(180,100,20,0.7),rgba(251,146,60,0.5))', border: '1px solid rgba(251,146,60,0.35)' }}>
                       상세
                     </div>
                   </div>
                 </div>
                 <div className="flex border-t" style={{ borderColor: 'rgba(160,90,20,0.15)' }}>
-                  <button
-                    onClick={() => dismissArrival(m.id)}
+                  <button onClick={() => dismissArrival(m.id)}
                     className="flex-1 text-sm py-1.5 text-center transition hover:brightness-125 font-semibold"
-                    style={{ color: 'rgba(239,68,68,0.6)', background: 'rgba(239,68,68,0.06)' }}>
+                    style={{ color: 'rgba(239,68,68,0.6)', background: 'rgba(239,68,68,0.06)', borderRight: '1px solid rgba(160,90,20,0.15)' }}>
                     ✕ 거절
                   </button>
+                  {(() => {
+                    const ch = mercs.length < maxHireCap(roomLevels['식당'] ?? 1) && state.gold >= m.cost
+                    return (
+                      <button onClick={() => ch && hireMerc(m)}
+                        className="flex-1 text-sm py-1.5 text-center transition hover:brightness-125 font-semibold"
+                        style={{ color: ch ? 'rgba(34,197,94,0.9)' : 'rgba(100,80,30,0.45)', background: 'rgba(34,197,94,0.06)', cursor: ch ? 'pointer' : 'not-allowed' }}>
+                        ⚔ 고용
+                      </button>
+                    )
+                  })()}
                 </div>
               </div>
             ))
           )}
-          <p className="text-center text-[13px]" style={{ color: 'rgba(100,80,50,0.4)' }}>
+          <p className="text-center text-sm" style={{ color: 'rgba(100,80,50,0.4)' }}>
             다음 도착: Day {nextArrivalDay}
           </p>
         </div>
 
         {/* ── Guild Building (right) ── */}
         <div className="absolute right-0 bottom-0 flex flex-col" style={{ width: '56%', height: '96%' }}>
-          <p className="text-center text-[13px] font-bold uppercase tracking-widest mb-1 pointer-events-none"
+          <p className="text-center text-sm font-bold uppercase tracking-widest mb-1 pointer-events-none"
             style={{ color: 'rgba(251,191,36,0.7)' }}>⚔ 용병단 길드 홀 Lv{buildings.hall} ⚔</p>
           {/* Battlements */}
           <div className="flex flex-shrink-0" style={{ height: 30 }}>
@@ -1291,7 +1525,7 @@ function App() {
             <div className="relative z-10 flex flex-col gap-1 p-2 min-h-0" style={{ height: 'calc(100% - 50px)' }}>
               {/* 2F section */}
               <div className="flex flex-col flex-1 min-h-0 gap-1">
-              <div className="text-[11px] font-bold px-1 flex-shrink-0" style={{ color: 'rgba(200,160,60,0.5)' }}>2F</div>
+              <div className="text-sm font-bold px-1 flex-shrink-0" style={{ color: 'rgba(200,160,60,0.5)' }}>2F</div>
               <div className="grid grid-cols-2 gap-1.5 flex-1 min-h-0">
                 {(['길드마스터룸', '훈련소'] as const).map(room => {
                   const cap = maxHireCap(roomLevels['식당'] ?? 1)
@@ -1316,13 +1550,13 @@ function App() {
                           ? { background: 'rgba(40,20,80,0.7)', borderBottom: '1px solid rgba(120,80,220,0.25)' }
                           : { background: 'rgba(60,15,8,0.7)', borderBottom: '1px solid rgba(220,80,40,0.25)' }}>
                         <div className="flex items-center justify-between">
-                          <span className="text-[12px] font-bold" style={{ color: room === '길드마스터룸' ? 'rgba(180,140,255,0.9)' : 'rgba(255,140,80,0.9)' }}>
+                          <span className="text-sm font-bold" style={{ color: room === '길드마스터룸' ? 'rgba(180,140,255,0.9)' : 'rgba(255,140,80,0.9)' }}>
                             {ROOM_EFFECTS[room].icon} {room}
-                            <span className="ml-1 text-[11px] text-slate-500">Lv{roomLv}</span>
+                            <span className="ml-1 text-sm text-slate-500">Lv{roomLv}</span>
                           </span>
                           {canUpgrade && (
                             <button onClick={() => upgradeRoom(room)}
-                              className="text-[11px] font-bold rounded px-1.5 py-0.5 text-white transition hover:brightness-125 flex-shrink-0"
+                              className="text-sm font-bold rounded px-1.5 py-0.5 text-white transition hover:brightness-125 flex-shrink-0"
                               style={{
                                 background: state.gold >= upgCost ? 'rgba(16,185,129,0.5)' : 'rgba(100,100,100,0.3)',
                                 border: '1px solid rgba(16,185,129,0.3)'
@@ -1331,7 +1565,7 @@ function App() {
                             </button>
                           )}
                         </div>
-                        <span className="text-[11px]" style={{ color: 'rgba(120,180,120,0.7)' }}>
+                        <span className="text-sm" style={{ color: 'rgba(120,180,120,0.7)' }}>
                           {ROOM_EFFECTS[room].desc[roomLv - 1]}
                         </span>
                       </div>
@@ -1353,19 +1587,19 @@ function App() {
                               }}>
                               <span className="text-2xl leading-none">{RACE_ICONS[m.race]}</span>
                               <p className="text-sm font-semibold text-slate-300 truncate max-w-[80px]">{m.name}</p>
-                              <span className={`text-[13px] font-bold ${gradeText(m.grade)}`}>{GRADE_STARS[m.grade] ?? m.grade} Lv{m.level}</span>
+                              <span className={`text-sm font-bold ${gradeText(m.grade)}`}>{GRADE_STARS[m.grade] ?? m.grade} Lv{m.level}</span>
                               <div className="flex items-center gap-1 mt-0.5">
-                                <span className={`text-[12px] font-semibold ${m.condition >= 70 ? 'text-emerald-400' : m.condition >= 40 ? 'text-amber-400' : 'text-red-400'}`}>{m.condition}%</span>
-                                <span className="text-[12px]">{favEmoji(m.favorability)}</span>
+                                <span className={`text-sm font-semibold ${m.condition >= 70 ? 'text-emerald-400' : m.condition >= 40 ? 'text-amber-400' : 'text-red-400'}`}>{m.condition}%</span>
+                                <span className="text-sm">{favEmoji(m.favorability)}</span>
                               </div>
                             </div>
                           )
                         })}
                         {occupants.length > cap && (
-                          <p className="text-[11px] text-slate-600 p-1">+{occupants.length - cap}명 대기</p>
+                          <p className="text-sm text-slate-600 p-1">+{occupants.length - cap}명 대기</p>
                         )}
                         {occupants.length === 0 && (
-                          <p className="text-[12px] italic p-1" style={{ color: 'rgba(100,80,50,0.4)' }}>드래그하여 배치</p>
+                          <p className="text-sm italic p-1" style={{ color: 'rgba(100,80,50,0.4)' }}>드래그하여 배치</p>
                         )}
                       </div>
                     </div>
@@ -1375,7 +1609,7 @@ function App() {
               </div>{/* end 2F wrapper */}
               {/* 1F section */}
               <div className="flex flex-col flex-1 min-h-0 gap-1">
-              <div className="text-[11px] font-bold px-1 flex-shrink-0" style={{ color: 'rgba(200,160,60,0.5)' }}>1F</div>
+              <div className="text-sm font-bold px-1 flex-shrink-0" style={{ color: 'rgba(200,160,60,0.5)' }}>1F</div>
               {/* 1F: 식당 full width */}
               {(() => {
                 const room = '식당' as const
@@ -1397,14 +1631,14 @@ function App() {
                     <div className="flex flex-col px-1.5 pt-1 pb-0.5 flex-shrink-0"
                       style={{ background: 'rgba(8,40,20,0.7)', borderBottom: '1px solid rgba(40,180,80,0.2)' }}>
                       <div className="flex items-center justify-between">
-                        <span className="text-[12px] font-bold" style={{ color: 'rgba(80,220,120,0.9)' }}>
+                        <span className="text-sm font-bold" style={{ color: 'rgba(80,220,120,0.9)' }}>
                           {ROOM_EFFECTS[room].icon} {room}
-                          <span className="ml-1 text-[11px] text-slate-500">Lv{roomLv}</span>
-                          <span className="ml-1 text-[11px]" style={{ color: 'rgba(120,180,120,0.6)' }}>{mercs.length}/{hireCap}명</span>
+                          <span className="ml-1 text-sm text-slate-500">Lv{roomLv}</span>
+                          <span className="ml-1 text-sm" style={{ color: 'rgba(120,180,120,0.6)' }}>{mercs.length}/{hireCap}명</span>
                         </span>
                         {canUpgrade && (
                           <button onClick={() => upgradeRoom(room)}
-                            className="text-[11px] font-bold rounded px-1.5 py-0.5 text-white transition hover:brightness-125 flex-shrink-0"
+                            className="text-sm font-bold rounded px-1.5 py-0.5 text-white transition hover:brightness-125 flex-shrink-0"
                             style={{
                               background: state.gold >= upgCost ? 'rgba(16,185,129,0.5)' : 'rgba(100,100,100,0.3)',
                               border: '1px solid rgba(16,185,129,0.3)'
@@ -1413,7 +1647,7 @@ function App() {
                           </button>
                         )}
                       </div>
-                      <span className="text-[11px]" style={{ color: 'rgba(120,180,120,0.7)' }}>
+                      <span className="text-sm" style={{ color: 'rgba(120,180,120,0.7)' }}>
                         {ROOM_EFFECTS[room].desc[roomLv - 1]}
                       </span>
                     </div>
@@ -1435,16 +1669,16 @@ function App() {
                             }}>
                             <span className="text-2xl leading-none">{RACE_ICONS[m.race]}</span>
                             <p className="text-sm font-semibold text-slate-300 truncate max-w-[80px]">{m.name}</p>
-                            <span className={`text-[13px] font-bold ${gradeText(m.grade)}`}>{GRADE_STARS[m.grade]}Lv{m.level}</span>
+                            <span className={`text-sm font-bold ${gradeText(m.grade)}`}>{GRADE_STARS[m.grade]}Lv{m.level}</span>
                             <div className="flex items-center gap-1 mt-0.5">
-                              <span className={`text-[12px] font-semibold ${m.condition >= 70 ? 'text-emerald-400' : m.condition >= 40 ? 'text-amber-400' : 'text-red-400'}`}>{m.condition}%</span>
-                              <span className="text-[12px]">{favEmoji(m.favorability)}</span>
+                              <span className={`text-sm font-semibold ${m.condition >= 70 ? 'text-emerald-400' : m.condition >= 40 ? 'text-amber-400' : 'text-red-400'}`}>{m.condition}%</span>
+                              <span className="text-sm">{favEmoji(m.favorability)}</span>
                             </div>
                           </div>
                         )
                       })}
                       {occupants.length === 0 && (
-                        <p className="text-[12px] italic p-1" style={{ color: 'rgba(100,80,50,0.4)' }}>드래그하여 배치</p>
+                        <p className="text-sm italic p-1" style={{ color: 'rgba(100,80,50,0.4)' }}>드래그하여 배치</p>
                       )}
                     </div>
                   </div>
@@ -1547,7 +1781,7 @@ function App() {
       {/* ── Quest Modal (left-side panel) ─────────────── */}
       {showQuestModal && (
         <div className="fixed left-0 top-0 bottom-0 z-30 flex flex-col overflow-hidden"
-          style={{ width: '41%', background: 'rgba(5,5,15,0.97)', borderRight: '2px solid rgba(59,130,246,0.4)' }}>
+          style={{ width: '46%', background: 'rgba(5,5,15,0.97)', borderRight: '2px solid rgba(59,130,246,0.4)' }}>
           {/* 고정 헤더 - 스크롤과 무관하게 항상 표시 */}
           <div className="flex items-center justify-between px-3 py-2 flex-shrink-0"
             style={{ borderBottom: '1px solid rgba(59,130,246,0.2)', background: 'rgba(5,5,15,0.98)' }}>
@@ -1585,7 +1819,7 @@ function App() {
                   <div>
                     <p className="text-sm font-bold mb-2 px-1 py-0.5 rounded"
                       style={{ color: '#38bdf8', background: 'rgba(14,165,233,0.1)', display: 'inline-block' }}>
-                      ⚔ 진행 중 {activeQuests.length}/{maxSimultaneousQuests(buildings.hall)}건
+                      ⚔ 진행 중 {activeQuests.length}건
                     </p>
                     <div className="space-y-2">
                       {activeQuests.map(aq => {
@@ -1599,7 +1833,7 @@ function App() {
                               <div className="flex items-center gap-2">
                                 <span className={`text-sm ${ELEMENT_COLOR[quest.element]}`}>{ELEMENT_ICON[quest.element]}</span>
                                 <p className="text-sm font-bold text-white">{quest.name}</p>
-                                {quest.trapFocus && <span className="text-[12px] text-purple-300">🔧함정</span>}
+                                {quest.trapFocus && <span className="text-sm text-purple-300">🔧함정</span>}
                               </div>
                               <span className="text-sm font-bold text-sky-300">⏱ {formatTimeLeft(aq.completesAt)}</span>
                             </div>
@@ -1611,7 +1845,7 @@ function App() {
                                 const m = mercs.find(x => x.id === mid)
                                 if (!m) return null
                                 return (
-                                  <span key={mid} className="text-[13px] rounded-full px-2 py-0.5 text-white flex items-center gap-1"
+                                  <span key={mid} className="text-sm rounded-full px-2 py-0.5 text-white flex items-center gap-1"
                                     style={{ background: 'rgba(14,165,233,0.3)', border: '1px solid rgba(14,165,233,0.5)' }}>
                                     {RACE_ICONS[m.race]} {m.name}
                                     <span className={ELEMENT_COLOR[m.element]}>{ELEMENT_ICON[m.element]}</span>
@@ -1635,7 +1869,7 @@ function App() {
                   </p>
                   {/* 배치할 용병 선택 피커 */}
                   <div className="rounded-xl p-2 mb-2" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                    <p className="text-[13px] text-slate-500 mb-1.5">배치할 용병 (클릭 선택 후 슬롯 클릭 또는 드래그)</p>
+                    <p className="text-sm text-slate-500 mb-1.5">배치할 용병 (클릭 선택 후 슬롯 클릭 또는 드래그)</p>
                     <div className="flex gap-1.5 flex-wrap">
                       {mercs.filter(m => m.status === '대기중' && !deployedMercIds.has(m.id)).map(m => (
                         <div key={m.id}
@@ -1649,14 +1883,14 @@ function App() {
                             border: `1px solid ${selectedMercId === m.id ? 'rgba(251,191,36,0.6)' : pendingMercIds.has(m.id) ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.08)'}`,
                             opacity: draggingMercId === m.id ? 0.4 : 1
                           }}>
-                          <span className="text-[13px] text-white">{RACE_ICONS[m.race]} {CLASS_ICONS[m.class]} {m.name}</span>
-                          <span className={`text-[12px] ml-1 font-bold ${gradeText(m.grade)}`}>{GRADE_STARS[m.grade] ?? m.grade}</span>
-                          <span className={`text-[12px] ml-0.5 ${ELEMENT_COLOR[m.element]}`}>{ELEMENT_ICON[m.element]}</span>
-                          {pendingMercIds.has(m.id) && <span className="text-[11px] ml-1 text-indigo-300">배치됨</span>}
+                          <span className="text-sm text-white">{RACE_ICONS[m.race]} {CLASS_ICONS[m.class]} {m.name}</span>
+                          <span className={`text-sm ml-1 font-bold ${gradeText(m.grade)}`}>{GRADE_STARS[m.grade] ?? m.grade}</span>
+                          <span className={`text-sm ml-0.5 ${ELEMENT_COLOR[m.element]}`}>{ELEMENT_ICON[m.element]}</span>
+                          {pendingMercIds.has(m.id) && <span className="text-sm ml-1 text-indigo-300">배치됨</span>}
                         </div>
                       ))}
                       {mercs.filter(m => m.status === '대기중' && !deployedMercIds.has(m.id)).length === 0 && (
-                        <p className="text-[13px] text-slate-600 py-1">배치 가능한 용병 없음</p>
+                        <p className="text-sm text-slate-600 py-1">배치 가능한 용병 없음</p>
                       )}
                     </div>
                   </div>
@@ -1667,8 +1901,7 @@ function App() {
                       .map(quest => {
                         const assigned = pendingAssign[quest.id] ?? []
                         const filledSlots = assigned.filter(Boolean)
-                        const canLaunch = filledSlots.length >= 1 &&
-                          activeQuests.length < maxSimultaneousQuests(buildings.hall)
+                        const canLaunch = filledSlots.length >= 1
                         const totalAssignedEff = filledSlots.map(id => mercs.find(m => m.id === id)).filter(Boolean).reduce((s, m) => s + effPower(m!), 0)
                         const powerRatio = Math.min(1, totalAssignedEff / quest.difficulty)
                         const successRate = filledSlots.length > 0 ? calcSuccessRate(quest, filledSlots, mercs) : 0
@@ -1698,24 +1931,24 @@ function App() {
                               setDraggingMercId(null); setSelectedMercId(null)
                             }}>
                             {/* Quest header strip */}
-                            <div className="px-3 pt-2.5 pb-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                            <div className="px-4 pt-3 pb-2.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                               <div className="flex items-center gap-2 flex-wrap mb-1">
                                 <span className={`text-sm ${ELEMENT_COLOR[quest.element]}`}>{ELEMENT_ICON[quest.element]}</span>
                                 <p className="text-sm font-bold text-white">{quest.name}</p>
                                 {quest.trapFocus && (
-                                  <span className="text-[12px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(147,51,234,0.2)', color: '#c4b5fd', border: '1px solid rgba(147,51,234,0.3)' }}>🔧 함정</span>
+                                  <span className="text-sm font-bold px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(147,51,234,0.2)', color: '#c4b5fd', border: '1px solid rgba(147,51,234,0.3)' }}>🔧 함정</span>
                                 )}
-                                <span className="text-[12px] rounded-full px-1.5 py-0.5" style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(140,140,140,0.7)' }}>
+                                <span className="text-sm rounded-full px-1.5 py-0.5" style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(140,140,140,0.7)' }}>
                                   전력 {quest.difficulty}
                                 </span>
-                                <span className="text-[12px] rounded-full px-1.5 py-0.5" style={{ background: 'rgba(14,165,233,0.1)', color: 'rgba(125,211,252,0.8)' }}>
+                                <span className="text-sm rounded-full px-1.5 py-0.5" style={{ background: 'rgba(14,165,233,0.1)', color: 'rgba(125,211,252,0.8)' }}>
                                   ⏱ {quest.duration}일
                                 </span>
                               </div>
-                              <p className="text-[13px] leading-relaxed" style={{ color: 'rgba(140,130,110,0.7)' }}>{quest.description}</p>
+                              <p className="text-sm leading-relaxed" style={{ color: 'rgba(140,130,110,0.7)' }}>{quest.description}</p>
                             </div>
                             {/* Reward row */}
-                            <div className="flex gap-1.5 text-[13px] px-3 py-2 flex-wrap" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                            <div className="flex gap-1.5 text-sm px-3 py-2 flex-wrap" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                               <span className="rounded px-1.5 py-0.5 font-semibold" style={{ background: 'rgba(251,191,36,0.1)', color: '#fbbf24' }}>+{quest.reward.gold}G</span>
                               <span className="rounded px-1.5 py-0.5 font-semibold" style={{ background: 'rgba(34,197,94,0.1)', color: '#86efac' }}>+{quest.reward.food}🌾</span>
                               <span className="rounded px-1.5 py-0.5 font-semibold" style={{ background: 'rgba(217,70,239,0.1)', color: '#e879f9' }}>+{quest.reward.fame}⭐</span>
@@ -1731,7 +1964,7 @@ function App() {
                               }, 0)
                               const net = quest.reward.gold - wageCost
                               return (
-                                <div className="flex gap-2 text-[13px] mb-2">
+                                <div className="flex gap-2 text-sm mb-2">
                                   <span className="text-orange-400">급여 -{wageCost}G</span>
                                   <span className={net >= 0 ? 'text-emerald-400' : 'text-red-400'}>순이익 {net >= 0 ? '+' : ''}{net}G</span>
                                 </div>
@@ -1739,7 +1972,7 @@ function App() {
                             })()}
                             {/* Power bar */}
                             <div className="mb-2">
-                              <div className="flex justify-between text-[12px] mb-0.5" style={{ color: 'rgba(120,120,120,0.6)' }}>
+                              <div className="flex justify-between text-sm mb-0.5" style={{ color: 'rgba(120,120,120,0.6)' }}>
                                 <span>배치 전력 {totalAssignedEff} / 요구 {quest.difficulty}</span>
                                 <span>{Math.round(powerRatio * 100)}%</span>
                               </div>
@@ -1753,7 +1986,7 @@ function App() {
                             {/* Success rate */}
                             {filledSlots.length > 0 && (
                               <div className="mb-2">
-                                <div className="flex justify-between text-[12px] mb-0.5">
+                                <div className="flex justify-between text-sm mb-0.5">
                                   <span style={{ color: 'rgba(120,120,120,0.6)' }}>성공률</span>
                                   <span className="font-bold" style={{ color: successRate >= 70 ? '#86efac' : successRate >= 45 ? '#fcd34d' : '#fca5a5' }}>{successRate}%</span>
                                 </div>
@@ -1767,7 +2000,7 @@ function App() {
                             )}
                             {/* Small party warning */}
                             {filledSlots.length > 0 && filledSlots.length < 3 && (
-                              <div className="flex items-center gap-1.5 rounded-lg px-2 py-1 mb-2 text-[13px]"
+                              <div className="flex items-center gap-1.5 rounded-lg px-2 py-1 mb-2 text-sm"
                                 style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: 'rgba(252,165,165,0.9)' }}>
                                 ⚠ 소규모 파티! 성공해도 사망 위험 증가
                               </div>
@@ -1803,7 +2036,7 @@ function App() {
                                     }}
                                     className="rounded-lg cursor-pointer transition-all flex flex-col gap-0.5 flex-shrink-0"
                                     style={{
-                                      padding: '4px 8px', width: 100,
+                                      padding: '4px 6px', minWidth: 80, maxWidth: 110,
                                       background: assignedMerc ? (elemMatch ? ELEMENT_BG[quest.element] : 'rgba(99,102,241,0.2)') :
                                         (selectedMercId || draggingMercId) ? 'rgba(251,191,36,0.1)' : 'rgba(255,255,255,0.04)',
                                       border: `1px solid ${assignedMerc ? (elemMatch ? 'rgba(250,204,21,0.6)' : 'rgba(99,102,241,0.5)') :
@@ -1813,20 +2046,20 @@ function App() {
                                     {assignedMerc ? (
                                       <>
                                         <div className="flex items-center gap-0.5 min-w-0">
-                                          <span className="flex-shrink-0">{RACE_ICONS[assignedMerc.race]}</span>
-                                          <span className="text-[13px] text-white truncate flex-1 min-w-0">{assignedMerc.name}</span>
-                                          <span className={`flex-shrink-0 text-[12px] ${ELEMENT_COLOR[assignedMerc.element]}`}>{ELEMENT_ICON[assignedMerc.element]}</span>
+                                          <span className="flex-shrink-0 text-sm">{RACE_ICONS[assignedMerc.race]}</span>
+                                          <span className="text-xs text-white truncate flex-1 min-w-0">{assignedMerc.name}</span>
+                                          <span className={`flex-shrink-0 text-xs ${ELEMENT_COLOR[assignedMerc.element]}`}>{ELEMENT_ICON[assignedMerc.element]}</span>
                                         </div>
                                         {mercDeathRisk !== null && (
-                                          <span className="text-[12px]" style={{
+                                          <span className="text-xs" style={{
                                             color: mercDeathRisk >= 0.3 ? 'rgba(252,165,165,0.9)' : mercDeathRisk >= 0.15 ? 'rgba(253,224,71,0.8)' : 'rgba(134,239,172,0.8)'
-                                          }}>사망 {Math.round(mercDeathRisk * 100)}%</span>
+                                          }}>☠{Math.round(mercDeathRisk * 100)}%</span>
                                         )}
-                                        {elemMatch && <span className="text-[11px] text-yellow-300">✦{ELEMENT_ICON[assignedMerc.element]}속성일치</span>}
+                                        {elemMatch && <span className="text-xs text-yellow-300">✦일치</span>}
                                       </>
                                     ) : (
-                                      <span className="text-[13px]" style={{ color: isRequired ? 'rgba(255,130,130,0.6)' : 'rgba(120,120,120,0.5)' }}>
-                                        {(selectedMercId || draggingMercId) ? '▶ 배치' : isRequired ? '필수' : '선택'}
+                                      <span className="text-xs" style={{ color: isRequired ? 'rgba(255,130,130,0.6)' : 'rgba(120,120,120,0.5)' }}>
+                                        {(selectedMercId || draggingMercId) ? '▶' : isRequired ? '필수' : '선택'}
                                       </span>
                                     )}
                                   </div>
@@ -1835,7 +2068,7 @@ function App() {
                             </div>
                             <div className="flex gap-2 mt-2">
                               <button onClick={() => launchQuest(quest.id)} disabled={!canLaunch}
-                                className="flex-1 rounded-lg py-2 text-[13px] font-extrabold transition-all"
+                                className="flex-1 rounded-lg py-2 text-sm font-extrabold transition-all"
                                 style={{
                                   background: canLaunch ? 'linear-gradient(135deg,#92400e,#d97706)' : 'rgba(255,255,255,0.04)',
                                   color: canLaunch ? 'white' : 'rgba(100,100,100,0.4)',
@@ -1888,13 +2121,13 @@ function App() {
                             <div className="flex items-center gap-1.5">
                               <p className="text-sm font-bold text-white">{info.name}</p>
                               {isBuilt && (
-                                <span className="text-[12px] font-bold px-1 rounded" style={{
+                                <span className="text-sm font-bold px-1 rounded" style={{
                                   background: atMax ? 'rgba(251,191,36,0.15)' : 'rgba(255,255,255,0.08)',
                                   color: atMax ? '#fbbf24' : 'rgba(160,160,160,0.7)'
                                 }}>Lv{currentLv}</span>
                               )}
                             </div>
-                            <p className="text-[13px] mt-0.5" style={{ color: isBuilt ? 'rgba(140,200,140,0.75)' : 'rgba(120,120,120,0.5)' }}>
+                            <p className="text-sm mt-0.5" style={{ color: isBuilt ? 'rgba(140,200,140,0.75)' : 'rgba(120,120,120,0.5)' }}>
                               {isBuilt ? info.desc(currentLv) : '미건설'}
                             </p>
                           </div>
@@ -1912,7 +2145,7 @@ function App() {
                             {isBuilt ? `↑ ${cost}G` : `건설 ${cost}G`}
                           </button>
                         )}
-                        {atMax && <span className="text-[12px] font-bold px-2 py-1 rounded-lg flex-shrink-0" style={{ background: 'rgba(251,191,36,0.1)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.2)' }}>MAX</span>}
+                        {atMax && <span className="text-sm font-bold px-2 py-1 rounded-lg flex-shrink-0" style={{ background: 'rgba(251,191,36,0.1)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.2)' }}>MAX</span>}
                       </div>
                       {isBuilt && (
                         <div className="flex gap-0.5 px-3 pb-2">
@@ -1976,11 +2209,11 @@ function App() {
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="text-sm font-bold text-white">{selectedMercDetail.name}</p>
-                            <span className={`text-[13px] font-bold px-1.5 py-0.5 rounded text-white ${gradeBg(selectedMercDetail.grade)}`}>{GRADE_STARS[selectedMercDetail.grade] ?? selectedMercDetail.grade}</span>
+                            <span className={`text-sm font-bold px-1.5 py-0.5 rounded text-white ${gradeBg(selectedMercDetail.grade)}`}>{GRADE_STARS[selectedMercDetail.grade] ?? selectedMercDetail.grade}</span>
                             <span className={`text-sm font-bold ${ELEMENT_COLOR[selectedMercDetail.element]}`}>{ELEMENT_ICON[selectedMercDetail.element]}</span>
                           </div>
-                          <p className="text-[13px] mt-0.5" style={{ color: 'rgba(140,120,90,0.85)' }}>Lv{selectedMercDetail.level} · {selectedMercDetail.race} · {CLASS_ICONS[selectedMercDetail.class]} {selectedMercDetail.class}</p>
-                          <div className="flex gap-2 mt-1 text-[13px]">
+                          <p className="text-sm mt-0.5" style={{ color: 'rgba(140,120,90,0.85)' }}>Lv{selectedMercDetail.level} · {selectedMercDetail.race} · {CLASS_ICONS[selectedMercDetail.class]} {selectedMercDetail.class}</p>
+                          <div className="flex gap-2 mt-1 text-sm">
                             <span className={selectedMercDetail.status === '파견중' ? 'text-sky-300' : selectedMercDetail.status === '부상' ? 'text-red-400' : 'text-emerald-400'}>
                               {selectedMercDetail.status === '파견중' ? '⚔ 파견중' : selectedMercDetail.status === '부상' ? '🤕 부상' : '✓ 대기중'}
                             </span>
@@ -1992,12 +2225,12 @@ function App() {
                       </div>
                       {/* Condition bar */}
                       <div className="space-y-1">
-                        <div className="flex justify-between text-[12px]" style={{ color: 'rgba(120,120,120,0.6)' }}>
+                        <div className="flex justify-between text-sm" style={{ color: 'rgba(120,120,120,0.6)' }}>
                           <span>컨디션</span>
                           <span className={selectedMercDetail.condition >= 70 ? 'text-emerald-400' : selectedMercDetail.condition >= 40 ? 'text-amber-400' : 'text-red-400'}>{selectedMercDetail.condition}%</span>
                         </div>
                         {condBar(selectedMercDetail.condition)}
-                        <div className="flex justify-between text-[12px] mt-1" style={{ color: 'rgba(120,120,120,0.6)' }}>
+                        <div className="flex justify-between text-sm mt-1" style={{ color: 'rgba(120,120,120,0.6)' }}>
                           <span>HP</span>
                           <span className={selectedMercDetail.hp >= 70 ? 'text-emerald-400' : selectedMercDetail.hp >= 40 ? 'text-amber-400' : 'text-red-400'}>{selectedMercDetail.hp}/100</span>
                         </div>
@@ -2034,12 +2267,12 @@ function App() {
                       const canUpgrade = cur && cur.tier < 3 && cur.upgradeCost > 0 && state.gold >= cur.upgradeCost
                       return (
                         <div className="mt-3 rounded-xl p-2.5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                          <p className="text-[13px] text-slate-500 mb-1.5">장착 무기</p>
+                          <p className="text-sm text-slate-500 mb-1.5">장착 무기</p>
                           {cur ? (
                             <>
                               <div className="flex items-center justify-between mb-1">
-                                <span className="text-sm text-white">{cur.icon} {cur.name} <span className="text-[13px] text-slate-500">Tier{cur.tier}</span></span>
-                                <div className="flex gap-1 text-[12px]">
+                                <span className="text-sm text-white">{cur.icon} {cur.name} <span className="text-sm text-slate-500">Tier{cur.tier}</span></span>
+                                <div className="flex gap-1 text-sm">
                                   {cur.atkBonus > 0 && <span className="text-red-300">공+{cur.atkBonus}</span>}
                                   {cur.trapBonus > 0 && <span className="text-purple-300">함+{cur.trapBonus}</span>}
                                   {cur.survBonus > 0 && <span className="text-emerald-300">생+{cur.survBonus}</span>}
@@ -2047,7 +2280,7 @@ function App() {
                                 </div>
                               </div>
                               {next && (
-                                <div className="text-[12px] text-slate-600 mb-1.5">다음: {next.icon} {next.name} (Tier{next.tier})</div>
+                                <div className="text-sm text-slate-600 mb-1.5">다음: {next.icon} {next.name} (Tier{next.tier})</div>
                               )}
                               {cur.tier < 3 ? (
                                 <button
@@ -2063,10 +2296,10 @@ function App() {
                                   {canUpgrade ? `업그레이드 ${cur.upgradeCost}G` : state.gold < cur.upgradeCost ? `금화 부족 (${cur.upgradeCost}G)` : '최고 등급'}
                                 </button>
                               ) : (
-                                <div className="text-center text-[13px] text-amber-400 py-0.5">최고 등급 무기</div>
+                                <div className="text-center text-sm text-amber-400 py-0.5">최고 등급 무기</div>
                               )}
                             </>
-                          ) : <span className="text-[13px] text-slate-600">무기 없음</span>}
+                          ) : <span className="text-sm text-slate-600">무기 없음</span>}
                         </div>
                       )
                     })()}
