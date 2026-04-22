@@ -11,15 +11,7 @@ const GRADE_STARS: Record<string, string> = { S: '★★★★★', A: '★★�
 
 // 속성 아이콘·색상
 const ELEMENT_ICON: Record<string, string> = { 불: '🔥', 얼음: '🧊', 번개: '⚡', 자연: '🌿', 암흑: '🌑', 빛: '✨' }
-// 속성 일치 시 발동되는 특수 효과 설명
-const ELEMENT_BONUS_DESC: Record<string, string> = {
-  불:   '전투력 +15%',
-  얼음: '컨디션 소모 -50%',
-  번개: '소요시간 -25%',
-  자연: '사망 위험 -35%',
-  암흑: '함정 적중 +15%',
-  빛:   '파티 회생 -30%',
-}
+
 const ELEMENT_COLOR: Record<string, string> = {
   불: 'text-orange-400', 얼음: 'text-cyan-300', 번개: 'text-yellow-300',
   자연: 'text-green-400', 암흑: 'text-purple-400', 빛: 'text-yellow-100'
@@ -241,7 +233,7 @@ const diningArrivalBonus = (lv: number) => [0, 1, 2][Math.min(lv - 1, 2)]
 const diningTavernBonus  = (lv: number) => [0, 1, 2][Math.min(lv - 1, 2)]
 
 // Building effects
-const maxSimultaneousQuests = (hallLv: number) => [2, 3, 4, 5][Math.min(hallLv - 1, 3)]
+
 const arrivalInterval = (barracksLv: number) => [3, 3, 2, 2][barracksLv - 1] ?? 3
 const arrivalCount    = (barracksLv: number) => [3, 4, 5, 6][barracksLv - 1] ?? 3
 const condRecovery    = (infLv: number)      => [0, 8, 15, 25, 40][infLv] ?? 0
@@ -917,8 +909,8 @@ function App() {
   }
 
   // ── Real-time quest completion ────────────────────────────────────────────
-  const completionDataRef = useRef({ mercs, state, questLog, buildings, roomLevels, activeQuests })
-  completionDataRef.current = { mercs, state, questLog, buildings, roomLevels, activeQuests }
+  const completionDataRef = useRef({ mercs, state, questLog, buildings, roomLevels, activeQuests, gateArrivals })
+  completionDataRef.current = { mercs, state, questLog, buildings, roomLevels, activeQuests, gateArrivals }
 
   const processCompletions = useCallback(() => {
     const now = Date.now()
@@ -929,6 +921,7 @@ function App() {
     let g = state.gold, f = state.food, fame = state.fame, morale = state.morale
     let nextMercs = [...mercs]
     const logs: string[] = []
+    let questSuccessCount = 0
 
     for (const aq of completed) {
       const quest = ALL_QUESTS.find(q => q.id === aq.questId)!
@@ -944,6 +937,7 @@ function App() {
       const success = Math.random() < calcSuccessRate(quest, aq.assignedMercIds, nextMercs) / 100
 
       if (success) {
+        questSuccessCount++
         f += quest.reward.food; fame += quest.reward.fame
         morale = Math.min(100, morale + 5)
         // 급여를 보상 금화에서 우선 지급, 남은 금액만 길드 수입
@@ -1026,6 +1020,22 @@ function App() {
       }
       nextMercs = nextMercs.map(m =>
         aq.assignedMercIds.includes(m.id) && m.status === '파견중' ? { ...m, status: '대기중' } : m)
+    }
+
+    // 퀘스트 성공 시 낮은 확률로 용병 1명 추가 도착 (소문이 퍼짐)
+    // 확률: 길드 Lv1=8%, Lv2=14%, Lv3=20%, Lv4+=25% (성공 건수마다 독립 판정)
+    if (questSuccessCount > 0) {
+      const { buildings } = completionDataRef.current
+      const guildLv = computeGuildLevel(fame)
+      const arrivalChance = [0.08, 0.14, 0.20, 0.25][Math.min(guildLv - 1, 3)]
+      for (let i = 0; i < questSuccessCount; i++) {
+        if (Math.random() < arrivalChance) {
+          const newcomer = generateMercenary(buildings.tavern)
+          setGateArrivals(prev => [...prev, newcomer])
+          logs.push(`🚶 ${newcomer.name}(${newcomer.grade}급) — 소문을 듣고 찾아왔습니다!`)
+          break // 한 번에 최대 1명
+        }
+      }
     }
 
     setMercs(nextMercs)
@@ -1370,55 +1380,43 @@ function App() {
         }} />
 
         {/* ── Arrival panel (left) ── */}
-        <div className="absolute flex flex-col justify-end gap-2 pb-2" style={{ left: 10, bottom: 48, width: '40%', maxHeight: 360 }}>
+        <div className="absolute flex flex-col gap-1.5 pb-2" style={{ left: 10, bottom: 48, width: '40%', maxHeight: 420, top: 8 }}>
           {/* 버튼 행 */}
-          <div className="flex gap-1.5">
+          <div className="flex gap-1.5 flex-shrink-0">
             <button onClick={() => setShowQuestModal(true)}
-              className="rounded-xl px-3 py-2 text-sm font-bold text-white transition-all hover:brightness-115 active:scale-95 relative"
+              className="rounded-xl px-3 py-1.5 text-sm font-bold text-white transition-all hover:brightness-115 active:scale-95 relative"
               style={{
                 background: 'linear-gradient(135deg,#1e3a5f,#1d4ed8)',
                 border: '1px solid rgba(59,130,246,0.55)',
                 backdropFilter: 'blur(8px)',
-                boxShadow: activeQuests.length > 0 ? '0 0 14px rgba(59,130,246,0.25)' : '0 2px 8px rgba(0,0,0,0.4)',
-                letterSpacing: '0.01em'
               }}>
               📜 계약 관리
               {(activeQuests.length > 0 || Object.keys(pendingAssign).some(k => (pendingAssign[k] ?? []).some(Boolean))) && (
-                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-sm font-extrabold flex items-center justify-center text-white"
-                  style={{ background: 'linear-gradient(135deg,#dc2626,#ef4444)', boxShadow: '0 0 6px rgba(239,68,68,0.5)' }}>
+                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-xs font-extrabold flex items-center justify-center text-white"
+                  style={{ background: 'linear-gradient(135deg,#dc2626,#ef4444)' }}>
                   {activeQuests.length + Object.keys(pendingAssign).filter(k => (pendingAssign[k] ?? []).some(Boolean)).length}
                 </span>
               )}
             </button>
             <button onClick={() => setShowMercModal(true)}
-              className="rounded-xl px-3 py-2 text-sm font-bold text-white transition-all hover:brightness-115 active:scale-95"
-              style={{
-                background: 'linear-gradient(135deg,#14532d,#166534)',
-                border: '1px solid rgba(34,197,94,0.45)',
-                backdropFilter: 'blur(8px)',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
-                letterSpacing: '0.01em'
-              }}>
+              className="rounded-xl px-3 py-1.5 text-sm font-bold text-white transition-all hover:brightness-115 active:scale-95"
+              style={{ background: 'linear-gradient(135deg,#14532d,#166534)', border: '1px solid rgba(34,197,94,0.45)', backdropFilter: 'blur(8px)' }}>
               👥 용병 목록
             </button>
             <button onClick={() => setShowLogModal(true)}
-              className="rounded-xl px-3 py-2 text-sm font-semibold transition-all hover:brightness-115 active:scale-95"
-              style={{
-                background: 'rgba(255,255,255,0.07)',
-                border: '1px solid rgba(255,255,255,0.12)',
-                color: 'rgba(180,170,150,0.85)',
-                backdropFilter: 'blur(8px)',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
-              }}>
-              📋 전투 결과
+              className="rounded-xl px-3 py-1.5 text-sm font-semibold transition-all hover:brightness-115 active:scale-95"
+              style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(180,170,150,0.85)', backdropFilter: 'blur(8px)' }}>
+              📋 결과
             </button>
           </div>
-          <div className="flex items-center gap-2 mb-0.5">
+
+          {/* 도착 헤더 */}
+          <div className="flex items-center gap-2 flex-shrink-0">
             <div className="flex-1 h-px" style={{ background: 'rgba(180,100,20,0.3)' }} />
-            <p className="text-sm font-bold uppercase tracking-widest" style={{ color: 'rgba(200,140,40,0.7)' }}>✦ 용병 도착 ✦</p>
+            <p className="text-xs font-bold uppercase tracking-widest" style={{ color: 'rgba(200,140,40,0.7)' }}>✦ 용병 도착 {gateArrivals.length > 0 ? `(${gateArrivals.length})` : ''} ✦</p>
             <div className="flex-1 h-px" style={{ background: 'rgba(180,100,20,0.3)' }} />
             <button onClick={refreshArrivals}
-              className="text-sm rounded-lg px-2 py-1 font-semibold transition hover:brightness-125 flex-shrink-0"
+              className="text-xs rounded-lg px-2 py-1 font-semibold transition hover:brightness-125 flex-shrink-0"
               style={{
                 background: state.gold >= ARRIVAL_REFRESH_COST ? 'rgba(251,191,36,0.12)' : 'rgba(255,255,255,0.04)',
                 border: '1px solid rgba(180,130,30,0.35)',
@@ -1427,65 +1425,69 @@ function App() {
               🔄 {ARRIVAL_REFRESH_COST}G
             </button>
           </div>
-          {gateArrivals.length === 0 ? (
-            <p className="text-center text-sm py-3" style={{ color: 'rgba(100,80,50,0.5)' }}>
-              다음 도착: Day {nextArrivalDay}
-            </p>
-          ) : (
-            gateArrivals.map((m) => (
-              <div key={m.id}
-                className="rounded-xl overflow-hidden transition-all"
-                style={{
-                  background: 'rgba(8,6,2,0.92)',
-                  border: `1px solid ${m.grade === 'S' ? 'rgba(217,70,239,0.55)' : m.grade === 'A' ? 'rgba(251,191,36,0.5)' : 'rgba(160,90,20,0.35)'}`,
-                  backdropFilter: 'blur(10px)',
-                  boxShadow: m.grade === 'S' ? '0 0 14px rgba(217,70,239,0.15)' : m.grade === 'A' ? '0 0 12px rgba(251,191,36,0.12)' : 'none'
-                }}>
-                <div className="flex items-center gap-2.5 cursor-pointer hover:brightness-110"
-                  style={{ padding: '10px 14px' }}
-                  onClick={() => setPreviewArrival(m)}>
-                  <span className="text-2xl leading-none flex-shrink-0">{RACE_ICONS[m.race]}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1 flex-wrap">
-                      <span className="text-sm font-bold text-white truncate max-w-[90px]">{m.name}</span>
-                      <span className={`text-sm font-bold px-1 py-0.5 rounded text-white flex-shrink-0 ${gradeBg(m.grade)}`}>{GRADE_STARS[m.grade] ?? m.grade}</span>
-                      <span className={`text-sm font-bold flex-shrink-0 ${ELEMENT_COLOR[m.element]}`}>{ELEMENT_ICON[m.element]}</span>
+
+          {/* 도착 카드 스크롤 영역 */}
+          <div className="flex-1 overflow-y-auto space-y-1.5 min-h-0">
+            {gateArrivals.length === 0 ? (
+              <p className="text-center text-xs py-3" style={{ color: 'rgba(100,80,50,0.5)' }}>
+                다음 도착: Day {nextArrivalDay}
+              </p>
+            ) : (
+              gateArrivals.map((m) => (
+                <div key={m.id}
+                  className="rounded-xl overflow-hidden flex-shrink-0"
+                  style={{
+                    height: 68,
+                    background: 'rgba(8,6,2,0.92)',
+                    border: `1px solid ${m.grade === 'S' ? 'rgba(217,70,239,0.55)' : m.grade === 'A' ? 'rgba(251,191,36,0.5)' : 'rgba(160,90,20,0.35)'}`,
+                    backdropFilter: 'blur(10px)',
+                  }}>
+                  {/* 정보 행 (고정 높이 42px) */}
+                  <div className="flex items-center gap-2 cursor-pointer hover:brightness-110"
+                    style={{ height: 42, padding: '0 10px' }}
+                    onClick={() => setPreviewArrival(m)}>
+                    <span className="text-xl leading-none flex-shrink-0">{RACE_ICONS[m.race]}</span>
+                    <div className="flex-1 min-w-0 overflow-hidden">
+                      <div className="flex items-center gap-1 overflow-hidden">
+                        <span className="text-xs font-bold text-white truncate min-w-0">{m.name}</span>
+                        <span className={`text-xs font-bold px-1 rounded text-white flex-shrink-0 ${gradeBg(m.grade)}`}>{GRADE_STARS[m.grade] ?? m.grade}</span>
+                        <span className={`text-xs font-bold flex-shrink-0 ${ELEMENT_COLOR[m.element]}`}>{ELEMENT_ICON[m.element]}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs overflow-hidden" style={{ color: 'rgba(140,110,70,0.8)' }}>
+                        <span className="truncate">{CLASS_ICONS[m.class]} {m.class}</span>
+                        <span className="text-cyan-300 flex-shrink-0">⚔{m.power}</span>
+                        <span className="text-amber-300 flex-shrink-0 ml-auto">{m.cost === 0 ? '무료' : `${m.cost}G`}</span>
+                      </div>
                     </div>
-                    <p className="text-sm mt-0.5 truncate" style={{ color: 'rgba(140,110,70,0.85)' }}>{CLASS_ICONS[m.class]} {m.class} · {m.race}</p>
-                    <div className="flex gap-2 text-sm mt-0.5">
-                      <span className="text-cyan-300">⚔{m.power}</span>
-                      {m.trap_disarm > 0 && <span className="text-purple-300">🔧{m.trap_disarm}</span>}
-                      <span className="text-amber-300 ml-auto">{m.cost === 0 ? '무료' : `${m.cost}G`}</span>
-                    </div>
-                  </div>
-                  <div className="text-center flex-shrink-0">
-                    <div className="text-sm font-bold rounded-lg px-2.5 py-1.5 text-white"
-                      style={{ background: 'linear-gradient(135deg,rgba(180,100,20,0.7),rgba(251,146,60,0.5))', border: '1px solid rgba(251,146,60,0.35)' }}>
+                    <div className="text-xs font-bold rounded px-2 py-1 text-white flex-shrink-0"
+                      style={{ background: 'rgba(180,100,20,0.5)', border: '1px solid rgba(251,146,60,0.3)' }}>
                       상세
                     </div>
                   </div>
+                  {/* 버튼 행 (고정 높이 26px) */}
+                  <div className="flex" style={{ height: 26, borderTop: '1px solid rgba(160,90,20,0.15)' }}>
+                    <button onClick={() => dismissArrival(m.id)}
+                      className="flex-1 text-xs text-center transition hover:brightness-125 font-semibold"
+                      style={{ color: 'rgba(239,68,68,0.6)', background: 'rgba(239,68,68,0.06)', borderRight: '1px solid rgba(160,90,20,0.15)' }}>
+                      ✕ 거절
+                    </button>
+                    {(() => {
+                      const ch = mercs.length < maxHireCap(roomLevels['식당'] ?? 1) && state.gold >= m.cost
+                      return (
+                        <button onClick={() => ch && hireMerc(m)}
+                          className="flex-1 text-xs text-center transition hover:brightness-125 font-semibold"
+                          style={{ color: ch ? 'rgba(34,197,94,0.9)' : 'rgba(100,80,30,0.45)', background: 'rgba(34,197,94,0.06)', cursor: ch ? 'pointer' : 'not-allowed' }}>
+                          ⚔ 고용
+                        </button>
+                      )
+                    })()}
+                  </div>
                 </div>
-                <div className="flex border-t" style={{ borderColor: 'rgba(160,90,20,0.15)' }}>
-                  <button onClick={() => dismissArrival(m.id)}
-                    className="flex-1 text-sm py-1.5 text-center transition hover:brightness-125 font-semibold"
-                    style={{ color: 'rgba(239,68,68,0.6)', background: 'rgba(239,68,68,0.06)', borderRight: '1px solid rgba(160,90,20,0.15)' }}>
-                    ✕ 거절
-                  </button>
-                  {(() => {
-                    const ch = mercs.length < maxHireCap(roomLevels['식당'] ?? 1) && state.gold >= m.cost
-                    return (
-                      <button onClick={() => ch && hireMerc(m)}
-                        className="flex-1 text-sm py-1.5 text-center transition hover:brightness-125 font-semibold"
-                        style={{ color: ch ? 'rgba(34,197,94,0.9)' : 'rgba(100,80,30,0.45)', background: 'rgba(34,197,94,0.06)', cursor: ch ? 'pointer' : 'not-allowed' }}>
-                        ⚔ 고용
-                      </button>
-                    )
-                  })()}
-                </div>
-              </div>
-            ))
-          )}
-          <p className="text-center text-sm" style={{ color: 'rgba(100,80,50,0.4)' }}>
+              ))
+            )}
+          </div>
+
+          <p className="text-center text-xs flex-shrink-0" style={{ color: 'rgba(100,80,50,0.4)' }}>
             다음 도착: Day {nextArrivalDay}
           </p>
         </div>
