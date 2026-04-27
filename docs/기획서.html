@@ -137,11 +137,14 @@
   <a href="#loop">핵심 루프</a>
   <div class="section-label">시스템</div>
   <a href="#mercs">용병 시스템</a>
+  <a href="#age">나이 시스템</a>
+  <a href="#chemistry">케미 점수</a>
   <a href="#classes">직업 / 종족</a>
   <a href="#elements">속성 시스템</a>
   <a href="#weapons">무기 시스템</a>
   <div class="section-label">콘텐츠</div>
   <a href="#quests">퀘스트 목록</a>
+  <a href="#chains">퀘스트 체인</a>
   <a href="#buildings">건물 / 룸</a>
   <a href="#economy">경제 시스템</a>
   <div class="section-label">공식</div>
@@ -157,13 +160,13 @@
 
   <!-- Hero -->
   <div class="hero" id="overview">
-    <p class="label">Game Design Document · v1.1.2 · 2026-04-20</p>
+    <p class="label">Game Design Document · v1.1.42 · 2026-04-24</p>
     <h1>아이언홀드 용병단 길드</h1>
     <p class="sub">중세 암흑 판타지 × 길드 경영 시뮬레이션 — 4_GM</p>
     <div class="badges">
       <span class="badge badge-purple">⚛ React 18 + TypeScript</span>
       <span class="badge badge-gold">🏰 1600×900 Fixed Canvas</span>
-      <span class="badge badge-green">📜 18 퀘스트</span>
+      <span class="badge badge-green">📜 23 퀘스트</span>
       <span class="badge badge-blue">🗡 15 무기</span>
       <span class="badge badge-red">👥 5 직업 × 4 종족</span>
     </div>
@@ -251,7 +254,13 @@
   </div>
 
   <h3>실효 전력 공식</h3>
-  <div class="formula">effPower(m) = (m.power + weaponPowerBonus) × (0.4 + 0.6 × condition/100) × favMod
+  <div class="formula">effPower(m) = (m.power + weaponPowerBonus) × ageMult × (0.4 + 0.6 × condition/100) × favMod
+
+ageMult:
+  age ≥ 55 → 0.0   (파견 불가)
+  age ≥ 38 → 1.0 - (age - 38) / 34 × 0.5   (최대 -50%)
+  age < 38 → 1.0
+
 favMod = 1 + (favorability - 50) / 500   // 범위: 0.9 ~ 1.1</div>
 
   <h3>등급 시스템</h3>
@@ -259,11 +268,11 @@ favMod = 1 + (favorability - 50) / 500   // 범위: 0.9 ~ 1.1</div>
     <table>
       <thead><tr><th>등급</th><th>스탯 총합</th><th>장례 비용</th><th>고용 비용</th><th>일급 기준</th></tr></thead>
       <tbody>
-        <tr><td><span class="grade-d">D ★</span></td><td>42</td><td>80G</td><td>무료</td><td>~18G/일</td></tr>
-        <tr><td><span class="grade-c">C ★★</span></td><td>58</td><td>150G</td><td>0~20G</td><td>~28G/일</td></tr>
-        <tr><td><span class="grade-b">B ★★★</span></td><td>72</td><td>280G</td><td>50G~</td><td>~45G/일</td></tr>
-        <tr><td><span class="grade-a">A ★★★★</span></td><td>86</td><td>500G</td><td>100G~</td><td>~70G/일</td></tr>
-        <tr><td><span class="grade-s">S ★★★★★</span></td><td>102</td><td>1,000G</td><td>200G~</td><td>~100G/일</td></tr>
+        <tr><td><span class="grade-d">D ★</span></td><td>42</td><td>80G</td><td>무료</td><td>4G/일</td></tr>
+        <tr><td><span class="grade-c">C ★★</span></td><td>58</td><td>150G</td><td>0~20G</td><td>10G/일</td></tr>
+        <tr><td><span class="grade-b">B ★★★</span></td><td>72</td><td>280G</td><td>50G~</td><td>45G/일</td></tr>
+        <tr><td><span class="grade-a">A ★★★★</span></td><td>86</td><td>500G</td><td>100G~</td><td>90G/일</td></tr>
+        <tr><td><span class="grade-s">S ★★★★★</span></td><td>102</td><td>1,000G</td><td>200G~</td><td>160G/일</td></tr>
       </tbody>
     </table>
   </div>
@@ -273,6 +282,70 @@ favMod = 1 + (favorability - 50) / 500   // 범위: 0.9 ~ 1.1</div>
     <strong>경험치 → 레벨업</strong> : expToNext = level × 100 (Lv1→100XP, Lv2→200XP …)<br>
     레벨업 시 모든 전투 스탯 +1, 전력(power) +3 상승.
     훈련소 배치 시 매일 XP 자동 획득 (레벨에 따라 1/3/6 XP).
+  </div>
+
+  <!-- ── 나이 시스템 ── -->
+  <h2 id="age"><span class="icon">⌛</span> 나이 시스템</h2>
+  <div class="info-box info-purple">
+    <strong>30 게임일</strong>마다 용병 나이 +1. 나이에 따라 실효 전력이 감소하며 일정 나이 이상은 파견 자체가 불가능해진다.
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>나이 구간</th><th>상태</th><th>실효 전력</th><th>파견 가능</th><th>비고</th></tr></thead>
+      <tbody>
+        <tr><td>~37세</td><td>청년</td><td>100%</td><td>✅</td><td>페널티 없음</td></tr>
+        <tr><td>38~54세</td><td>노쇠 진행</td><td>100% → 50% (선형)</td><td>✅ (38세 배지 표시)</td><td>매 나이마다 1.47% 감소</td></tr>
+        <tr><td>55세+</td><td>노쇠</td><td>0%</td><td>❌ 파견불가</td><td>길드마스터룸 배치만 가능</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3>나이 동결</h3>
+  <div class="card-grid cols-2">
+    <div class="card">
+      <h3 style="margin-top:0">💎 나이 동결 비용</h3>
+      <ul class="dot-list">
+        <li>수정 3개 소비</li>
+        <li>30 게임일 (실시간 150분) 동안 나이 고정</li>
+        <li>동결 중에는 카운트다운 표시</li>
+        <li>동결 해제 후 즉시 재사용 가능</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">📌 운영 팁</h3>
+      <ul class="dot-list">
+        <li>S/A급 핵심 용병만 선택적 동결 권장</li>
+        <li>55세 도달 전 동결로 무한 연장 가능</li>
+        <li>수정은 용병 사망 시 +1 획득</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ── 케미 점수 ── -->
+  <h2 id="chemistry"><span class="icon">🧪</span> 케미 점수 (Chemistry Score)</h2>
+  <p>파티 내 용병들의 협조성·이기심·시너지 요소를 종합해 0~100점의 케미 점수를 산출. 성공률과 사망 위험에 직접 반영된다.</p>
+  <div class="formula">calcChemistryScore(party):
+
+  avgCoop = party 평균 traits.cooperation          // 0~100
+  egoClash = party 내 ego > 70인 용병 수           // "이기적" 판정
+  synergy = party 내 synergy_factor 합계           // 종족·직업별 부여값
+
+  score = avgCoop × 0.5
+        + max(0, 50 - egoClash × 15)              // 이기적 용병마다 -15
+        + synergy × 5                              // 시너지 +5/인
+  → clamp(0, 100)</div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>케미 구간</th><th>등급</th><th>성공률 보정</th><th>사망위험 배율</th></tr></thead>
+      <tbody>
+        <tr><td>80~100</td><td style="color:#86efac;font-weight:700;">최고</td><td>+10%</td><td>×0.80</td></tr>
+        <tr><td>60~79</td><td style="color:#fcd34d;font-weight:700;">양호</td><td>+5%</td><td>×0.90</td></tr>
+        <tr><td>40~59</td><td style="color:#fb923c;font-weight:700;">불안</td><td>±0%</td><td>×1.00</td></tr>
+        <tr><td>0~39</td><td style="color:#fca5a5;font-weight:700;">최악</td><td>-8%</td><td>×1.20</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="info-box info-gold">
+    케미 점수 바는 용병을 <strong>2명 이상</strong> 배치했을 때 퀘스트 카드 하단에 실시간 표시된다.
   </div>
 
   <!-- ── 직업 / 종족 ── -->
@@ -405,23 +478,38 @@ favMod = 1 + (favorability - 50) / 500   // 범위: 0.9 ~ 1.1</div>
   </div>
 
   <!-- ── 퀘스트 목록 ── -->
-  <h2 id="quests"><span class="icon">📜</span> 퀘스트 목록 (18종)</h2>
+  <h2 id="quests"><span class="icon">📜</span> 퀘스트 목록 (23종)</h2>
 
   <div class="info-box info-purple">
     <strong>퀘스트 표시 수:</strong> 홀 Lv1=5건, Lv2=7건, Lv3=9건, Lv4=12건<br>
-    <strong>티어 시스템:</strong> 현재 티어(100%), 상위 티어(20% 확률), 하위 티어(30% 확률)로 풀 구성
+    <strong>티어 시스템:</strong> 현재 티어(100%), 상위 티어(20% 확률), 하위 티어(30% 확률)로 풀 구성<br>
+    <strong>보상 상한:</strong> ~10G/분 기준, 최대 1,400G (드래곤 제외)
+  </div>
+
+  <h3>단기 퀘스트 (duration=1, 5분, 전 길드 레벨 출현)</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>ID</th><th>이름</th><th>난이도</th><th>슬롯</th><th>시간</th><th>사망위험</th><th>컨디션</th><th>속성</th><th>보상 (금/명/경)</th></tr></thead>
+      <tbody>
+        <tr><td>q20</td><td>길드 심부름</td><td>20</td><td>1~4</td><td>1단계 (5분)</td><td>0%</td><td>3</td><td>🌿</td><td>18G / 1⭐ / 8XP</td></tr>
+        <tr><td>q21</td><td>약초 수집</td><td>25</td><td>1~4</td><td>1단계 (5분)</td><td>1%</td><td>4</td><td>🌿</td><td>22G / 2⭐ / 10XP</td></tr>
+        <tr><td>q22</td><td>불량배 제압</td><td>40</td><td>1~4</td><td>1단계 (5분)</td><td>2%</td><td>6</td><td>🔥</td><td>30G / 2⭐ / 12XP</td></tr>
+        <tr><td>q23</td><td>유령 퇴치</td><td>45</td><td>1~4</td><td>1단계 (5분)</td><td>2%</td><td>5</td><td>✨</td><td>28G / 2⭐ / 12XP</td></tr>
+        <tr><td>q24</td><td>광부 구조</td><td>50</td><td>1~4</td><td>1단계 (5분)</td><td>3%</td><td>7</td><td>⛏🌿</td><td>35G / 3⭐ / 14XP</td></tr>
+      </tbody>
+    </table>
   </div>
 
   <h3>Lv1 티어 (난이도 ≤120, 명성 0~29)</h3>
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th>ID</th><th>이름</th><th>난이도</th><th>슬롯</th><th>시간</th><th>사망위험</th><th>컨디션</th><th>속성</th><th>함정</th><th>보상 (금/식/명/경)</th></tr></thead>
+      <thead><tr><th>ID</th><th>이름</th><th>난이도</th><th>슬롯</th><th>시간</th><th>사망위험</th><th>컨디션</th><th>속성</th><th>함정</th><th>보상 (금/명/경)</th><th>체인</th></tr></thead>
       <tbody>
-        <tr><td>q1</td><td>쥐 사냥</td><td>30</td><td>1~4</td><td>1단계</td><td>1%</td><td>8</td><td>🌿</td><td></td><td>22G / 8 / 2⭐ / 15XP</td></tr>
-        <tr><td>q2</td><td>야간 경비</td><td>50</td><td>1~4</td><td>2단계</td><td>2%</td><td>10</td><td>🌑</td><td></td><td>38G / 12 / 3⭐ / 20XP</td></tr>
-        <tr><td>q3</td><td>상인 호위</td><td>85</td><td>1~4</td><td>2단계</td><td>4%</td><td>12</td><td>🌿</td><td></td><td>68G / 18 / 5⭐ / 30XP</td></tr>
-        <tr><td>q11</td><td>마을 치유 봉사</td><td>55</td><td>1~4</td><td>1단계</td><td>1%</td><td>5</td><td>✨</td><td></td><td>30G / 15 / 3⭐ / 18XP</td></tr>
-        <tr><td>q12</td><td>얼음 동굴 수색</td><td>90</td><td>1~4</td><td>2단계</td><td>3%</td><td>14</td><td>🧊</td><td></td><td>60G / 20 / 4⭐ / 28XP</td></tr>
+        <tr><td>q1</td><td>쥐 사냥</td><td>30</td><td>1~4</td><td>1단계</td><td>1%</td><td>8</td><td>🌿</td><td></td><td>22G / 2⭐ / 15XP</td><td></td></tr>
+        <tr><td>q2</td><td>야간 경비</td><td>50</td><td>1~4</td><td>2단계</td><td>2%</td><td>10</td><td>🌑</td><td></td><td>38G / 3⭐ / 20XP</td><td>어둠의 각성 ①</td></tr>
+        <tr><td>q3</td><td>상인 호위</td><td>85</td><td>1~4</td><td>2단계</td><td>4%</td><td>12</td><td>🌿</td><td></td><td>68G / 5⭐ / 30XP</td><td>밀수의 그림자 ①</td></tr>
+        <tr><td>q11</td><td>마을 치유 봉사</td><td>55</td><td>1~4</td><td>1단계</td><td>1%</td><td>5</td><td>✨</td><td></td><td>30G / 3⭐ / 18XP</td><td></td></tr>
+        <tr><td>q12</td><td>얼음 동굴 수색</td><td>90</td><td>1~4</td><td>2단계</td><td>3%</td><td>14</td><td>🧊</td><td></td><td>60G / 4⭐ / 28XP</td><td>얼음 아래의 비밀 ①</td></tr>
       </tbody>
     </table>
   </div>
@@ -429,12 +517,12 @@ favMod = 1 + (favorability - 50) / 500   // 범위: 0.9 ~ 1.1</div>
   <h3>Lv2 티어 (난이도 121~210, 명성 30~79)</h3>
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th>ID</th><th>이름</th><th>난이도</th><th>슬롯</th><th>시간</th><th>사망위험</th><th>컨디션</th><th>속성</th><th>함정</th><th>보상 (금/식/명/경)</th></tr></thead>
+      <thead><tr><th>ID</th><th>이름</th><th>난이도</th><th>슬롯</th><th>시간</th><th>사망위험</th><th>컨디션</th><th>속성</th><th>함정</th><th>보상 (금/명/경)</th><th>체인</th></tr></thead>
       <tbody>
-        <tr><td>q4</td><td>도둑단 소탕</td><td>150</td><td>2~4</td><td>3단계</td><td>8%</td><td>18</td><td>🔥</td><td></td><td>135G / 28 / 10⭐ / 50XP</td></tr>
-        <tr><td>q5</td><td>광산 함정 해제</td><td>180</td><td>2~4</td><td>3단계</td><td>10%</td><td>20</td><td>🌑</td><td>🔧</td><td>195G / 15 / 12⭐ / 60XP</td></tr>
-        <tr><td>q13</td><td>독숲 정찰</td><td>145</td><td>1~4</td><td>2단계</td><td>6%</td><td>18</td><td>🌿</td><td>🔧</td><td>120G / 22 / 7⭐ / 46XP</td></tr>
-        <tr><td>q14</td><td>번개 정령 포획</td><td>185</td><td>2~4</td><td>3단계</td><td>8%</td><td>18</td><td>⚡</td><td></td><td>170G / 18 / 10⭐ / 58XP</td></tr>
+        <tr><td>q4</td><td>도둑단 소탕</td><td>150</td><td>2~4</td><td>3단계</td><td>8%</td><td>18</td><td>🔥</td><td></td><td>135G / 10⭐ / 50XP</td><td></td></tr>
+        <tr><td>q5</td><td>광산 함정 해제</td><td>180</td><td>2~4</td><td>3단계</td><td>10%</td><td>20</td><td>🌑</td><td>🔧</td><td>195G / 12⭐ / 60XP</td><td></td></tr>
+        <tr><td>q13</td><td>독숲 정찰</td><td>145</td><td>1~4</td><td>2단계</td><td>6%</td><td>18</td><td>🌿</td><td>🔧</td><td>120G / 7⭐ / 46XP</td><td>어둠의 각성 ② (q2 선행)</td></tr>
+        <tr><td>q14</td><td>번개 정령 포획</td><td>185</td><td>2~4</td><td>3단계</td><td>8%</td><td>18</td><td>⚡</td><td></td><td>170G / 10⭐ / 58XP</td><td></td></tr>
       </tbody>
     </table>
   </div>
@@ -442,12 +530,12 @@ favMod = 1 + (favorability - 50) / 500   // 범위: 0.9 ~ 1.1</div>
   <h3>Lv3 티어 (난이도 211~330, 명성 80~179)</h3>
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th>ID</th><th>이름</th><th>난이도</th><th>슬롯</th><th>시간</th><th>사망위험</th><th>컨디션</th><th>속성</th><th>함정</th><th>보상 (금/식/명/경)</th></tr></thead>
+      <thead><tr><th>ID</th><th>이름</th><th>난이도</th><th>슬롯</th><th>시간</th><th>사망위험</th><th>컨디션</th><th>속성</th><th>함정</th><th>보상 (금/명/경)</th><th>체인</th></tr></thead>
       <tbody>
-        <tr><td>q6</td><td>밀수단 추적</td><td>260</td><td>2~4</td><td>4단계</td><td>12%</td><td>22</td><td>⚡</td><td></td><td>285G / 38 / 18⭐ / 80XP</td></tr>
-        <tr><td>q7</td><td>귀족 저택 장기 경비</td><td>300</td><td>2~4</td><td>5단계</td><td>8%</td><td>15</td><td>✨</td><td></td><td>430G / 22 / 22⭐ / 90XP</td></tr>
-        <tr><td>q15</td><td>설원 요새 탈환</td><td>245</td><td>2~4</td><td>4단계</td><td>10%</td><td>24</td><td>🧊</td><td></td><td>265G / 42 / 16⭐ / 78XP</td></tr>
-        <tr><td>q16</td><td>성소 수호 임무</td><td>285</td><td>2~4</td><td>4단계</td><td>9%</td><td>16</td><td>✨</td><td></td><td>325G / 30 / 20⭐ / 88XP</td></tr>
+        <tr><td>q6</td><td>밀수단 추적</td><td>260</td><td>2~4</td><td>4단계</td><td>12%</td><td>22</td><td>⚡</td><td></td><td>285G / 18⭐ / 80XP</td><td>밀수의 그림자 ② (q3 선행)</td></tr>
+        <tr><td>q7</td><td>귀족 저택 장기 경비</td><td>300</td><td>2~4</td><td>5단계</td><td>8%</td><td>15</td><td>✨</td><td></td><td>430G / 22⭐ / 90XP</td><td></td></tr>
+        <tr><td>q15</td><td>설원 요새 탈환</td><td>245</td><td>2~4</td><td>4단계</td><td>10%</td><td>24</td><td>🧊</td><td></td><td>265G / 16⭐ / 78XP</td><td>얼음 아래의 비밀 ② (q12 선행)</td></tr>
+        <tr><td>q16</td><td>성소 수호 임무</td><td>285</td><td>2~4</td><td>4단계</td><td>9%</td><td>16</td><td>✨</td><td></td><td>325G / 20⭐ / 88XP</td><td></td></tr>
       </tbody>
     </table>
   </div>
@@ -455,12 +543,12 @@ favMod = 1 + (favorability - 50) / 500   // 범위: 0.9 ~ 1.1</div>
   <h3>Lv4 티어 (난이도 331~560, 명성 180~349)</h3>
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th>ID</th><th>이름</th><th>난이도</th><th>슬롯</th><th>시간</th><th>사망위험</th><th>컨디션</th><th>속성</th><th>함정</th><th>보상 (금/식/명/경)</th></tr></thead>
+      <thead><tr><th>ID</th><th>이름</th><th>난이도</th><th>슬롯</th><th>시간</th><th>사망위험</th><th>컨디션</th><th>속성</th><th>함정</th><th>보상 (금/명/경)</th><th>체인</th></tr></thead>
       <tbody>
-        <tr><td>q8</td><td>던전 탐사</td><td>420</td><td>3~4</td><td>6단계</td><td>20%</td><td>28</td><td>🌑</td><td>🔧</td><td>660G / 55 / 35⭐ / 140XP</td></tr>
-        <tr><td>q9</td><td>북방 약탈자 토벌</td><td>520</td><td>3~4</td><td>5단계</td><td>18%</td><td>25</td><td>🧊</td><td></td><td>800G / 75 / 45⭐ / 160XP</td></tr>
-        <tr><td>q17</td><td>마법사 탑 잠입</td><td>390</td><td>2~4</td><td>5단계</td><td>15%</td><td>26</td><td>⚡</td><td>🔧</td><td>580G / 50 / 30⭐ / 130XP</td></tr>
-        <tr><td>q18</td><td>빙원 극지 원정</td><td>490</td><td>3~4</td><td>6단계</td><td>16%</td><td>32</td><td>🧊</td><td></td><td>720G / 80 / 40⭐ / 155XP</td></tr>
+        <tr><td>q8</td><td>던전 탐사</td><td>420</td><td>3~4</td><td>6단계</td><td>20%</td><td>28</td><td>🌑</td><td>🔧</td><td>1,000G / 35⭐ / 140XP</td><td>어둠의 각성 ③ (q13 선행)</td></tr>
+        <tr><td>q9</td><td>북방 약탈자 토벌</td><td>520</td><td>3~4</td><td>5단계</td><td>18%</td><td>25</td><td>🧊</td><td></td><td>1,100G / 45⭐ / 160XP</td><td></td></tr>
+        <tr><td>q17</td><td>마법사 탑 잠입</td><td>390</td><td>2~4</td><td>5단계</td><td>15%</td><td>26</td><td>⚡</td><td>🔧</td><td>900G / 30⭐ / 130XP</td><td></td></tr>
+        <tr><td>q18</td><td>빙원 극지 원정</td><td>490</td><td>3~4</td><td>6단계</td><td>16%</td><td>32</td><td>🧊</td><td></td><td>1,200G / 40⭐ / 155XP</td><td>얼음 아래의 비밀 ③ (q15 선행)</td></tr>
       </tbody>
     </table>
   </div>
@@ -468,28 +556,95 @@ favMod = 1 + (favorability - 50) / 500   // 범위: 0.9 ~ 1.1</div>
   <h3>Lv5 티어 (난이도 700+, 명성 350+)</h3>
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th>ID</th><th>이름</th><th>난이도</th><th>슬롯</th><th>시간</th><th>사망위험</th><th>컨디션</th><th>속성</th><th>보상 (금/식/명/경)</th></tr></thead>
+      <thead><tr><th>ID</th><th>이름</th><th>난이도</th><th>슬롯</th><th>시간</th><th>사망위험</th><th>컨디션</th><th>속성</th><th>보상 (금/명/경)</th></tr></thead>
       <tbody>
-        <tr><td>q10</td><td>🐉 드래곤 토벌</td><td>700</td><td>4 (필수)</td><td>8단계</td><td><strong>35%</strong></td><td>40</td><td>🔥</td><td>1,500G / 120 / 100⭐ / 300XP</td></tr>
+        <tr><td>q10</td><td>🐉 드래곤 토벌</td><td>700</td><td>4 (필수)</td><td>8단계</td><td><strong>35%</strong></td><td>40</td><td>🔥</td><td>1,400G / 100⭐ / 300XP</td></tr>
       </tbody>
     </table>
   </div>
 
-  <h3>퀘스트 실시간 소요시간 (분)</h3>
+  <h3>퀘스트 실시간 소요시간 — 전력 초과 시 단축 공식</h3>
+  <div class="formula">ratio = 파티 totalEffPower / quest.difficulty
+
+ratio ≤ 1.0 → 시간 단축 없음 (기본 시간 × 1.0)
+ratio > 1.0 → mult = max(0.30, 1.0 - (min(ratio, 3.0) - 1.0) / 2.0 × 0.70)
+
+예시:
+  ratio 1.0 → mult 1.00 (단축 없음)
+  ratio 1.5 → mult 0.825 (-18%)
+  ratio 2.0 → mult 0.65 (-35%)
+  ratio 2.5 → mult 0.475 (-53%)
+  ratio 3.0+ → mult 0.30 (최대 -70%)
+
+번개 속성 일치 시 위 mult에 추가 곱산:
+  번개 1명 → ×0.88, 2명 → ×0.76, 3명 → ×0.64 (최소 ×0.60)</div>
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th>단계</th><th>기본</th><th>전력 2배+</th><th>전력 1.5배+</th><th>전력 1.2배+</th><th>전력 1.0배+</th><th>번개 일치</th></tr></thead>
+      <thead><tr><th>단계</th><th>기본</th><th>ratio=1.5</th><th>ratio=2.0</th><th>ratio=3.0+</th><th>번개 2명 추가</th></tr></thead>
       <tbody>
-        <tr><td>1단계</td><td>5분</td><td>2분</td><td>2.75분</td><td>3.5분</td><td>4.25분</td><td>-25%</td></tr>
-        <tr><td>2단계</td><td>15분</td><td>6분</td><td>8.25분</td><td>10.5분</td><td>12.75분</td><td>-25%</td></tr>
-        <tr><td>3단계</td><td>30분</td><td>12분</td><td>16.5분</td><td>21분</td><td>25.5분</td><td>-25%</td></tr>
-        <tr><td>4단계</td><td>60분</td><td>24분</td><td>33분</td><td>42분</td><td>51분</td><td>-25%</td></tr>
-        <tr><td>5단계</td><td>90분</td><td>36분</td><td>49.5분</td><td>63분</td><td>76.5분</td><td>-25%</td></tr>
-        <tr><td>6단계</td><td>120분</td><td>48분</td><td>66분</td><td>84분</td><td>102분</td><td>-25%</td></tr>
-        <tr><td>7단계</td><td>180분</td><td>72분</td><td>99분</td><td>126분</td><td>153분</td><td>-25%</td></tr>
-        <tr><td>8단계</td><td>240분</td><td>96분</td><td>132분</td><td>168분</td><td>204분</td><td>-25%</td></tr>
+        <tr><td>1단계</td><td>5분</td><td>4분</td><td>3분</td><td>1.5분</td><td>×0.76</td></tr>
+        <tr><td>2단계</td><td>15분</td><td>12분</td><td>10분</td><td>4.5분</td><td>×0.76</td></tr>
+        <tr><td>3단계</td><td>30분</td><td>25분</td><td>20분</td><td>9분</td><td>×0.76</td></tr>
+        <tr><td>4단계</td><td>60분</td><td>50분</td><td>39분</td><td>18분</td><td>×0.76</td></tr>
+        <tr><td>5단계</td><td>90분</td><td>74분</td><td>59분</td><td>27분</td><td>×0.76</td></tr>
+        <tr><td>6단계</td><td>120분</td><td>99분</td><td>78분</td><td>36분</td><td>×0.76</td></tr>
+        <tr><td>7단계</td><td>180분</td><td>149분</td><td>117분</td><td>54분</td><td>×0.76</td></tr>
+        <tr><td>8단계</td><td>240분</td><td>198분</td><td>156분</td><td>72분</td><td>×0.76</td></tr>
       </tbody>
     </table>
+  </div>
+
+  <!-- ── 퀘스트 체인 ── -->
+  <h2 id="chains"><span class="icon">🔗</span> 퀘스트 체인</h2>
+  <p>선행 퀘스트를 완료해야 다음 체인 퀘스트가 풀에 출현한다. 체인 마지막 완료 시 스토리 모달 연출.</p>
+  <div class="card-grid cols-3">
+    <div class="card">
+      <h3 style="margin-top:0">🌿 밀수의 그림자</h3>
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="timeline-label">① q3 상인 호위</div>
+          <div class="timeline-desc">완료 시 스토리: 수상한 화물 발견</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-label">② q6 밀수단 추적</div>
+          <div class="timeline-desc">완료 시 체인 종료 스토리</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">🧊 얼음 아래의 비밀</h3>
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="timeline-label">① q12 얼음 동굴 수색</div>
+          <div class="timeline-desc">완료 시 스토리: 봉인된 유물 발견</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-label">② q15 설원 요새 탈환</div>
+          <div class="timeline-desc">완료 시 스토리: 요새의 비밀</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-label">③ q18 빙원 극지 원정</div>
+          <div class="timeline-desc">완료 시 체인 종료 스토리</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">🌑 어둠의 각성</h3>
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="timeline-label">① q2 야간 경비</div>
+          <div class="timeline-desc">완료 시 스토리: 어둠의 낌새</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-label">② q13 독숲 정찰</div>
+          <div class="timeline-desc">완료 시 스토리: 어둠의 사원</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-label">③ q8 던전 탐사</div>
+          <div class="timeline-desc">완료 시 체인 종료 스토리</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- ── 건물 / 룸 ── -->
@@ -604,11 +759,14 @@ favMod = 1 + (favorability - 50) / 500   // 범위: 0.9 ~ 1.1</div>
   </div>
 
   <h3>퀘스트 급여 단가 (등급별 1일 보상)</h3>
+  <div class="info-box info-red">
+    D/C급 급여를 대폭 인하하여 초반 단기 퀘스트로도 수익을 낼 수 있도록 밸런스 조정.
+  </div>
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th>퀘스트 난이도</th><th>D</th><th>C</th><th>B</th><th>A</th><th>S</th></tr></thead>
+      <thead><tr><th>등급</th><th>D</th><th>C</th><th>B</th><th>A</th><th>S</th></tr></thead>
       <tbody>
-        <tr><td>1일당 지급</td><td>15G</td><td>30G</td><td>58G</td><td>100G</td><td>175G</td></tr>
+        <tr><td>1일당 급여</td><td>4G</td><td>10G</td><td>45G</td><td>90G</td><td>160G</td></tr>
       </tbody>
     </table>
   </div>
@@ -634,9 +792,15 @@ trapFocus 퀘스트 totalTrap≥80: +10%, ≥50: +5%
 fillRatio < 0.5  → -15%
 fillRatio < 0.75 → -5%
 
-// 컨디션 페널티
-avgCondition < 50 → -10%
-avgCondition < 70 → -5%
+// 컨디션 페널티 (개인별)
+condition < 10  → 파견 불가 (⛔)
+condition < 25  → -20%
+condition < 50  → -10%
+
+// 케미 점수 보정
+chem ≥ 80 → +10%
+chem ≥ 60 → +5%
+chem < 40  → -8%
 
 최종 = clamp(5, 95)</div>
 
@@ -675,7 +839,33 @@ coopFactor = max(0.72, 1.25 - avgCoop/65)
 전사   → ×0.88
 
 // 7. 파티 내 상대 전력 (약한 유닛이 먼저 쓰러짐)
-relStrength = mercEff / partyAvgEff</div>
+relStrength = mercEff / partyAvgEff
+
+// 8. 케미 점수 배율
+chem ≥ 80 → ×0.80
+chem ≥ 60 → ×0.90
+chem < 40  → ×1.20
+
+// 9. 컨디션 배율 (개인)
+condition < 10 → ×4.0
+condition < 25 → ×2.5
+condition < 50 → ×1.5</div>
+
+  <h3>사망 발생 시 생존자 페널티</h3>
+  <div class="formula">// 동료 전사 시 귀환 용병 전원에게 적용
+
+성공 중 사망:
+  생존자 컨디션 -= 15 × 사망 수
+  생존자 호감도 -= 5
+  길드 사기    -= 5 × 사망 수
+
+실패 중 사망:
+  생존자 컨디션 -= 20 × 사망 수
+  생존자 호감도 -= 3
+  길드 사기    -= 5 × 사망 수
+
+실패 but 전원 귀환:
+  생존자 컨디션 -= 5 (패배 피로)</div>
 
   <!-- ── 길드 레벨 ── -->
   <h2 id="guild"><span class="icon">🏰</span> 길드 레벨 시스템</h2>
@@ -770,7 +960,7 @@ relStrength = mercEff / partyAvgEff</div>
 
   <!-- Footer -->
   <div style="text-align:center;padding:20px 0;color:var(--text-faint);font-size:12px;">
-    4_GM · 아이언홀드 용병단 길드 기획서 · v1.1.2 · 2026-04-20<br>
+    4_GM · 아이언홀드 용병단 길드 기획서 · v1.1.42 · 2026-04-24<br>
     React 18 + TypeScript · Vite · Tailwind CSS
   </div>
 
