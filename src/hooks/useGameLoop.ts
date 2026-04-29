@@ -5,6 +5,8 @@ import { MISSION_PAY_PER_DAY, URGENT_QUEST_MISS_FAME_PENALTY } from '../constant
 import { xpMultiplier } from '../data/buildings'
 import { EXP_TO_NEXT } from '../data/mercenaries'
 import { calcSuccessRate, calcMercDeathRisk } from '../utils/quest'
+import { getClient, clientGoldBonus, clientFamePenaltyMult, INITIAL_CLIENT_RELATION } from '../data/clients'
+import { growthMultiplier } from '../utils/retirement'
 
 interface GameLoopRefs {
   mercs: Mercenary[]
@@ -14,6 +16,7 @@ interface GameLoopRefs {
   activeQuests: ActiveQuest[]
   urgentQuestIds: string[]
   urgentQuestExpiries: Record<string, number>
+  clientRelations: Record<string, number>
 }
 
 interface GameLoopCallbacks {
@@ -25,17 +28,19 @@ interface GameLoopCallbacks {
   onQuestResult: (success: boolean, deaths: number) => void
   setUrgentQuestIds: React.Dispatch<React.SetStateAction<string[]>>
   setUrgentQuestExpiries: React.Dispatch<React.SetStateAction<Record<string, number>>>
+  setClientRelations: React.Dispatch<React.SetStateAction<Record<string, number>>>
 }
 
 export function useGameLoop(refs: GameLoopRefs, callbacks: GameLoopCallbacks) {
   const dataRef = useRef(refs)
   dataRef.current = refs
 
-  const { setMercs, setState, setActiveQuests, setQuestLog, setShowLogModal, onQuestResult, setUrgentQuestIds, setUrgentQuestExpiries } = callbacks
+  const { setMercs, setState, setActiveQuests, setQuestLog, setShowLogModal, onQuestResult, setUrgentQuestIds, setUrgentQuestExpiries, setClientRelations } = callbacks
 
   const processCompletions = useCallback(() => {
     const now = Date.now()
-    const { mercs, state, buildings, activeQuests } = dataRef.current
+    const { mercs, state, buildings, activeQuests, urgentQuestIds, urgentQuestExpiries, clientRelations } = dataRef.current
+    const localClientRelations = { ...clientRelations }
     const completed = activeQuests.filter(aq => aq.completesAt <= now)
     if (completed.length === 0) return
 
@@ -81,12 +86,14 @@ export function useGameLoop(refs: GameLoopRefs, callbacks: GameLoopCallbacks) {
             logs.push(`⬆ ${m.name} Lv${level - 1}→Lv${level} 레벨업!`)
           }
           const sb = level - m.level
+          const growMult = growthMultiplier(m.age)
+          const statGain = Math.max(1, Math.round(sb * growMult))
           return { ...m, level, experience: exp, expToNext,
             favorability: Math.min(100, m.favorability + 5),
-            power: m.power + sb * 4,
-            trap_disarm: m.trap_disarm + sb * 2,
-            stats: { 공격력: m.stats.공격력 + sb * 2, 함정해제: m.stats.함정해제 + sb * 2,
-                     생존율: m.stats.생존율 + sb * 2, 협조성: m.stats.협조성 + sb } }
+            power: m.power + statGain * 4,
+            trap_disarm: m.trap_disarm + statGain * 2,
+            stats: { 공격력: m.stats.공격력 + statGain * 2, 함정해제: m.stats.함정해제 + statGain * 2,
+                     생존율: m.stats.생존율 + statGain * 2, 협조성: m.stats.협조성 + statGain } }
         })
         if (!wageFullyPaid && totalWages > 0) {
           nextMercs = nextMercs.map(m => {
@@ -110,12 +117,36 @@ export function useGameLoop(refs: GameLoopRefs, callbacks: GameLoopCallbacks) {
             }
           }
         }
+        // 의뢰인 관계 갱신
+        const clientId = quest.clientId
+        if (clientId) {
+          const prev = localClientRelations[clientId] ?? INITIAL_CLIENT_RELATION
+          localClientRelations[clientId] = Math.min(100, prev + 5)
+          const client = getClient(clientId)
+          if (client && localClientRelations[clientId] >= 80) {
+            const bonus = Math.round(quest.reward.gold * clientGoldBonus(localClientRelations[clientId], client.questBonus))
+            if (bonus > 0) {
+              g += bonus
+              logs.push(`🪙 [${client.name}] 관계 보너스 +${bonus}G`)
+            }
+          }
+        }
       } else {
         morale = Math.max(0, morale - 8)
-        const fameLoss = quest.famePenalty ?? 0
+        const clientId = quest.clientId
+        const penaltyMult = clientFamePenaltyMult(localClientRelations[clientId] ?? INITIAL_CLIENT_RELATION)
+        const fameLoss = Math.round((quest.famePenalty ?? 0) * penaltyMult)
         if (fameLoss > 0) {
           fame = Math.max(0, fame - fameLoss)
           logs.push(`⭐ 명성 -${fameLoss} (${quest.name} 실패)`)
+        }
+        if (clientId) {
+          const prev = localClientRelations[clientId] ?? INITIAL_CLIENT_RELATION
+          localClientRelations[clientId] = Math.max(0, prev - 10)
+          if (localClientRelations[clientId] === 0) {
+            const client = getClient(clientId)
+            logs.push(`❗ [${client?.name ?? clientId}] 신뢰도 바닥! 의뢰 중단 위험`)
+          }
         }
         logs.push(`❌ [${quest.name}] 실패! 부대가 귀환했습니다.`)
         const failTotalWages = assignedMercs.reduce((s, m) => s + (MISSION_PAY_PER_DAY[m.grade] ?? 15) * quest.duration, 0)
@@ -125,7 +156,8 @@ export function useGameLoop(refs: GameLoopRefs, callbacks: GameLoopCallbacks) {
           if (!aq.assignedMercIds.includes(m.id)) return m
           const expectedWage = Math.round((MISSION_PAY_PER_DAY[m.grade] ?? 15) * quest.duration * 0.5)
           const wagePenalty = expectedWage > 0 ? Math.min(10, Math.max(2, Math.ceil(expectedWage / 15))) : 2
-          return { ...m, favorability: Math.max(0, m.favorability - 5 - wagePenalty) }
+          const mentalMod = m.traits?.mentality >= 80 ? 0.7 : 1.0
+          return { ...m, favorability: Math.max(0, m.favorability - Math.round((5 + wagePenalty) * mentalMod)) }
         })
         const failParty = aq.assignedMercIds.map(id => nextMercs.find(m => m.id === id)).filter(Boolean) as Mercenary[]
         const deadIds: string[] = []
@@ -145,11 +177,10 @@ export function useGameLoop(refs: GameLoopRefs, callbacks: GameLoopCallbacks) {
             : m)
       }
       nextMercs = nextMercs.map(m =>
-        aq.assignedMercIds.includes(m.id) && m.status === '파견중' ? { ...m, status: '대기중' } : m)
+        aq.assignedMercIds.includes(m.id) && m.status === '파견중' ? { ...m, status: '대기중', idleDays: 0, lastDispatchEndDay: dataRef.current.state.day } : m)
       questResults.push({ success, deaths: questDeaths })
     }
 
-    const { urgentQuestIds, urgentQuestExpiries } = dataRef.current
     const nowMs = Date.now()
     const expiredIds = urgentQuestIds.filter(qid => (urgentQuestExpiries[qid] ?? Infinity) <= nowMs)
     if (expiredIds.length > 0) {
@@ -163,13 +194,14 @@ export function useGameLoop(refs: GameLoopRefs, callbacks: GameLoopCallbacks) {
       })
     }
 
+    setClientRelations(localClientRelations)
     setMercs(nextMercs)
     setState(prev => ({ ...prev, day: state.day, gold: Math.max(0, g), fame: Math.max(0, fame), morale }))
     setActiveQuests(prev => prev.filter(aq => aq.completesAt > now))
     setQuestLog(prev => [...prev, ...logs].slice(-20))
     if (logs.some(l => l.startsWith('✅') || l.startsWith('❌') || l.startsWith('💀'))) setShowLogModal(true)
     for (const r of questResults) onQuestResult(r.success, r.deaths)
-  }, [setMercs, setState, setActiveQuests, setQuestLog, setShowLogModal, onQuestResult, setUrgentQuestIds, setUrgentQuestExpiries])
+  }, [setMercs, setState, setActiveQuests, setQuestLog, setShowLogModal, onQuestResult, setUrgentQuestIds, setUrgentQuestExpiries, setClientRelations])
 
   useEffect(() => {
     const timer = setInterval(processCompletions, 2_000)

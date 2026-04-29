@@ -3,6 +3,9 @@ import { initialMercenaries, ALL_QUESTS, generateMercenary, EXP_TO_NEXT, WEAPONS
 import { StatRadar } from './components/StatRadar'
 import { MercAvatar } from './components/MercAvatar'
 import type { Mercenary, Quest, ActiveQuest, GuildBuildings, CampaignState } from './types'
+import { calcRetirementChance, growthMultiplier, getDefectionThreshold } from './utils/retirement'
+import { IDLE_AMBITION_THRESHOLD } from './constants'
+import { getClient, clientGoldBonus, clientFamePenaltyMult, INITIAL_CLIENT_RELATION } from './data/clients'
 
 // ── Display helpers ────────────────────────────────────────────────────────
 
@@ -550,6 +553,7 @@ interface SaveSlotData {
   questPool: string[]
   roomLevels: Record<string, number>
   completedQuestIds: string[]
+  clientRelations: Record<string, number>
 }
 
 const SAVE_KEY = 'sma_guild_saves'
@@ -605,6 +609,7 @@ function App() {
   const [battleResults, setBattleResults] = useState<Array<{ questName: string; success: boolean; lines: string[] }>>([])
   const [battleResultPage, setBattleResultPage] = useState(0)
   const [completedQuestIds, setCompletedQuestIds] = useState<string[]>([])
+  const [clientRelations, setClientRelations] = useState<Record<string, number>>({})
   const [showStoryModal, setShowStoryModal] = useState(false)
   const [storyContent, setStoryContent] = useState<{ questName: string; chainName: string; title: string; lines: string[] } | null>(null)
   const [saveSlots, setSaveSlots] = useState<(SaveSlotData | null)[]>(loadAllSaveSlots)
@@ -961,7 +966,7 @@ function App() {
       mercs, activeQuests, buildings,
       campaignState: state,
       questLog, gateArrivals, nextArrivalTime, nextMoraleDropAt,
-      questPool, roomLevels, completedQuestIds
+      questPool, roomLevels, completedQuestIds, clientRelations
     }
     setSaveSlots(prev => {
       const next = [...prev]
@@ -995,6 +1000,7 @@ function App() {
     setQuestPool(data.questPool ?? drawQuestPool(data.buildings.hall, data.activeQuests.map(aq => aq.questId), data.campaignState.fame, loadedCompleted))
     setRoomLevels(data.roomLevels ?? { 길드마스터룸: 1, 훈련소: 1, 식당: 1 })
     setCompletedQuestIds(loadedCompleted)
+    setClientRelations(data.clientRelations ?? {})
     setPendingAssign({})
     setSelectedMercId(null)
     setShowSaveModal(false)
@@ -1123,6 +1129,20 @@ function App() {
       const eleBonus  = m.room === '마법훈련소'   && m.class === '마법사'  && mageLv > 0    ? [4,7,10][Math.min(mageLv-1,2)]    : 0
       const surBonus  = m.room === '레인저훈련소' && (m.class === '궁수' || m.class === '도적') && rangerLv > 0  ? [5,10,15][Math.min(rangerLv-1,2)] : 0
       const atkBonus  = m.room === '전사훈련소'   && m.class === '전사'   && warriorLv > 0 ? [5,10,15][Math.min(warriorLv-1,2)]: 0
+      // 성격 시스템 일일 효과
+      // 프로의식 80+ → 컨디션 +2/일 자가회복
+      if (m.traits.professionalism >= 80) {
+        upd.condition = Math.min(100, (upd.condition ?? m.condition) + 2)
+      }
+      // 야망: N일 비파견 시 불만 (idleDays 갱신은 아래에서)
+      const newIdleDays = (m.idleDays ?? 0) + 1
+      upd.idleDays = newIdleDays
+      if (newIdleDays >= IDLE_AMBITION_THRESHOLD && m.traits.ambition >= 70) {
+        upd.favorability = Math.max(0, (upd.favorability ?? m.favorability) - 3)
+        if (newIdleDays === IDLE_AMBITION_THRESHOLD) {
+          logs.push(`😤 ${m.name} 비활약 불만 (야망 높음)`)
+        }
+      }
       upd.specialtyBonuses = { elementBonus: eleBonus, survBonus: surBonus, atkBonus }
       return Object.keys(upd).length > 0 ? { ...m, ...upd } : m
     })
@@ -1137,6 +1157,36 @@ function App() {
         else if (newAge >= 38 && newAge % 4 === 0) logs.push(`🕰 ${m.name} ${newAge}세 — 노쇠로 전력이 저하됩니다.`)
         return { ...m, age: newAge }
       })
+    }
+
+    // ── 3c. 은퇴 체크 (나이 40+ 이상, 30일마다) ──────────────────────────
+    if (nextDay % 30 === 0) {
+      const retirements: string[] = []
+      for (const m of nextMercs.filter(m => m.age >= 40 && m.status !== '파견중')) {
+        const retireChance = calcRetirementChance(m, morale)
+        if (retireChance > 0 && Math.random() < retireChance) {
+          retirements.push(m.id)
+          logs.push(`🏠 ${m.name}(${m.age}세)이(가) 은퇴를 선언했습니다.`)
+        }
+      }
+      if (retirements.length > 0) {
+        nextMercs = nextMercs.filter(m => !retirements.includes(m.id))
+      }
+    }
+
+    // ── 3d. 이탈 체크 ──────────────────────────────────────────────────────
+    const defectors: string[] = []
+    nextMercs = nextMercs.map(m => {
+      if (m.status === '파견중') return m
+      const defThreshold = getDefectionThreshold(m.traits.loyalty)
+      if (m.favorability <= defThreshold && m.traits.loyalty < 40 && Math.random() < 0.1) {
+        defectors.push(m.id)
+        logs.push(`💨 ${m.name}이(가) 길드를 떠났습니다. (호감도 낮음)`)
+      }
+      return m
+    })
+    if (defectors.length > 0) {
+      nextMercs = nextMercs.filter(m => !defectors.includes(m.id))
     }
 
     // ── 4. Morale natural recovery ────────────────────────────────────────
@@ -1186,12 +1236,13 @@ function App() {
   }, [])
 
   // ── Real-time quest completion ────────────────────────────────────────────
-  const completionDataRef = useRef({ mercs, state, questLog, buildings, roomLevels, activeQuests, gateArrivals, nextArrivalTime, nextMoraleDropAt, battleResults, completedQuestIds })
-  completionDataRef.current = { mercs, state, questLog, buildings, roomLevels, activeQuests, gateArrivals, nextArrivalTime, nextMoraleDropAt, battleResults, completedQuestIds }
+  const completionDataRef = useRef({ mercs, state, questLog, buildings, roomLevels, activeQuests, gateArrivals, nextArrivalTime, nextMoraleDropAt, battleResults, completedQuestIds, clientRelations })
+  completionDataRef.current = { mercs, state, questLog, buildings, roomLevels, activeQuests, gateArrivals, nextArrivalTime, nextMoraleDropAt, battleResults, completedQuestIds, clientRelations }
 
   const processCompletions = useCallback(() => {
     const now = Date.now()
-    const { mercs, state, questLog: _log, buildings, activeQuests, battleResults } = completionDataRef.current
+    const { mercs, state, questLog: _log, buildings, activeQuests, battleResults, clientRelations } = completionDataRef.current
+    const localClientRelations = { ...clientRelations }
     const completed = activeQuests.filter(aq => aq.completesAt <= now)
     if (completed.length === 0) return
 
@@ -1241,11 +1292,13 @@ function App() {
             questLines.push(`⬆ ${m.name} Lv${level - 1}→Lv${level} 레벨업!`)
           }
           const sb = level - m.level
+          const growMult = growthMultiplier(m.age)
+          const statGain = Math.max(1, Math.round(sb * growMult))
           return { ...m, level, experience: exp, expToNext,
             favorability: Math.min(100, m.favorability + 5),
-            power: m.power + sb * 4,
-            trap_disarm: m.trap_disarm + sb * 2,
-            stats: { 공격력: m.stats.공격력 + sb * 2, 함정해제: m.stats.함정해제 + sb * 2, 생존율: m.stats.생존율 + sb * 2, 협조성: m.stats.협조성 + sb } }
+            power: m.power + statGain * 4,
+            trap_disarm: m.trap_disarm + statGain * 2,
+            stats: { 공격력: m.stats.공격력 + statGain * 2, 함정해제: m.stats.함정해제 + statGain * 2, 생존율: m.stats.생존율 + statGain * 2, 협조성: m.stats.협조성 + statGain } }
         })
         if (!wageFullyPaid && totalWages > 0) {
           nextMercs = nextMercs.map(m => {
@@ -1278,8 +1331,37 @@ function App() {
             return { ...m, condition: Math.max(0, m.condition - 15 * successDeadIds.length), favorability: Math.max(0, m.favorability - 5) }
           })
         }
+        // 의뢰인 관계 갱신
+        const clientId = quest.clientId
+        if (clientId) {
+          const prev = localClientRelations[clientId] ?? INITIAL_CLIENT_RELATION
+          localClientRelations[clientId] = Math.min(100, prev + 5)
+          const client = getClient(clientId)
+          if (client && localClientRelations[clientId] >= 80) {
+            const bonus = Math.round(quest.reward.gold * clientGoldBonus(localClientRelations[clientId], client.questBonus))
+            if (bonus > 0) {
+              g += bonus
+              questLines.push(`🪙 [${client.name}] 관계 보너스 +${bonus}G`)
+            }
+          }
+        }
       } else {
         morale = Math.max(0, morale - 8)
+        const clientId = quest.clientId
+        const penaltyMult = clientFamePenaltyMult(localClientRelations[clientId] ?? INITIAL_CLIENT_RELATION)
+        const fameLoss = Math.round((quest.famePenalty ?? 0) * penaltyMult)
+        if (fameLoss > 0) {
+          fame = Math.max(0, fame - fameLoss)
+          questLines.push(`⭐ 명성 -${fameLoss} (${quest.name} 실패)`)
+        }
+        if (clientId) {
+          const prev = localClientRelations[clientId] ?? INITIAL_CLIENT_RELATION
+          localClientRelations[clientId] = Math.max(0, prev - 10)
+          if (localClientRelations[clientId] === 0) {
+            const client = getClient(clientId)
+            questLines.push(`❗ [${client?.name ?? clientId}] 신뢰도 바닥! 의뢰 중단 위험`)
+          }
+        }
         questLines.push(`🔙 부대가 귀환했습니다.`)
         const failTotalWages = assignedMercs.reduce((s, m) => s + (MISSION_PAY_PER_DAY[m.grade] ?? 15) * quest.duration, 0)
         const expectedFailWage = Math.round(failTotalWages * 0.5)
@@ -1288,7 +1370,8 @@ function App() {
           if (!aq.assignedMercIds.includes(m.id)) return m
           const expectedWage = Math.round((MISSION_PAY_PER_DAY[m.grade] ?? 15) * quest.duration * 0.5)
           const wagePenalty = expectedWage > 0 ? Math.min(10, Math.max(2, Math.ceil(expectedWage / 15))) : 2
-          return { ...m, favorability: Math.max(0, m.favorability - 5 - wagePenalty) }
+          const mentalMod = m.traits?.mentality >= 80 ? 0.7 : 1.0
+          return { ...m, favorability: Math.max(0, m.favorability - Math.round((5 + wagePenalty) * mentalMod)) }
         })
         const failParty = aq.assignedMercIds.map(id => nextMercs.find(m => m.id === id)).filter(Boolean) as Mercenary[]
         const deadIds: string[] = []
@@ -1318,7 +1401,7 @@ function App() {
         }
       }
       nextMercs = nextMercs.map(m =>
-        aq.assignedMercIds.includes(m.id) && m.status === '파견중' ? { ...m, status: '대기중' } : m)
+        aq.assignedMercIds.includes(m.id) && m.status === '파견중' ? { ...m, status: '대기중', idleDays: 0 } : m)
 
       logs.push(success ? `✅ [${quest.name}] 성공!` : `❌ [${quest.name}] 실패!`, ...questLines)
       perQuestPages.push({ questName: quest.name, success, lines: questLines })
@@ -1344,6 +1427,7 @@ function App() {
       const q = ALL_QUESTS.find(x => x.id === aq.questId)
       return !!q?.storyAfter
     })
+    setClientRelations(localClientRelations)
     setMercs(nextMercs)
     setState(prev => ({ ...prev, day: state.day, gold: Math.max(0, g), fame: Math.max(0, fame), morale, crystals: (prev.crystals ?? 0) + batchDeaths }))
     setActiveQuests(prev => prev.filter(aq => aq.completesAt > now))
