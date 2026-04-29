@@ -2,6 +2,7 @@ import type { Mercenary, Quest } from '../types'
 import { ALL_QUESTS } from '../data/quests'
 import { GUILD_MAX_QUEST_DIFF, QUEST_BASE_TIMES_MIN } from '../constants'
 import { effPower, wTrap, wAtk, wSurv, canTrap } from './power'
+import { tagSuccessBonus, tagDeathRiskMult } from './specialty'
 
 export function computeGuildLevel(fame: number): number {
   const GUILD_LEVEL_FAME = [0, 30, 80, 180, 350] as const
@@ -96,6 +97,10 @@ export function calcSuccessRate(quest: Quest, assignedIds: string[], allMercs: M
   const avgCond = assigned.reduce((s, m) => s + m.condition, 0) / assigned.length
   if (avgCond < 50)      rate = Math.max(5, rate - 10)
   else if (avgCond < 70) rate = Math.max(5, rate - 5)
+  // 전문성 태그 보너스
+  for (const m of assigned) {
+    rate = Math.min(95, rate + tagSuccessBonus(m, quest, assigned.length))
+  }
   return Math.max(5, Math.min(95, rate))
 }
 
@@ -147,5 +152,6 @@ export function calcMercDeathRisk(quest: Quest, merc: Mercenary, party: Mercenar
   if (merc.element === '자연' && quest.element === '자연') risk *= 0.65
   const lightMatchCount = party.filter(m => m.element === '빛' && quest.element === '빛').length
   if (lightMatchCount > 0) risk *= Math.pow(0.72, lightMatchCount)
+  risk *= tagDeathRiskMult(merc, quest)
   return Math.min(0.98, Math.max(0.01, risk))
 }

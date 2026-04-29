@@ -6,6 +6,8 @@ import { MISSION_PAY_PER_DAY, URGENT_QUEST_MISS_FAME_PENALTY } from '../constant
 import { xpMultiplier } from '../data/buildings'
 import { EXP_TO_NEXT } from '../data/mercenaries'
 import { calcSuccessRate, calcMercDeathRisk } from '../utils/quest'
+import { updateQuestHistory, checkNewTags } from '../utils/specialty'
+import { SPECIALTY_TAG_DESC } from '../constants'
 import { getClient, clientGoldBonus, clientFamePenaltyMult, INITIAL_CLIENT_RELATION } from '../data/clients'
 import { growthMultiplier } from '../utils/retirement'
 
@@ -113,6 +115,37 @@ export function useGameLoop(refs: GameLoopRefs, callbacks: GameLoopCallbacks) {
             return { ...m, favorability: Math.max(0, m.favorability - favPenalty) }
           })
         }
+        // lowCond 카운터 업데이트 (iron_will용)
+        nextMercs = nextMercs.map(m => {
+          if (!aq.assignedMercIds.includes(m.id)) return m
+          if (m.condition <= 30) {
+            const h = { ...(m.questHistory as Record<string, number>), _lowCond: ((m.questHistory as any)['_lowCond'] ?? 0) + 1 }
+            return { ...m, questHistory: h as typeof m.questHistory }
+          }
+          return m
+        })
+        // shadow_walker 카운터 업데이트
+        nextMercs = nextMercs.map(m => {
+          if (!aq.assignedMercIds.includes(m.id)) return m
+          if (m.element === '암흑' && quest.element === '암흑') {
+            const h = { ...(m.questHistory as Record<string, number>), _shadow: ((m.questHistory as any)['_shadow'] ?? 0) + 1 }
+            return { ...m, questHistory: h as typeof m.questHistory }
+          }
+          return m
+        })
+        // 성공 완료 용병 questHistory 업데이트 + 태그 획득
+        nextMercs = nextMercs.map(m => {
+          if (!aq.assignedMercIds.includes(m.id)) return m
+          const withHistory = updateQuestHistory(m, quest, aq.assignedMercIds.length)
+          const newTags = checkNewTags(withHistory, quest, aq.assignedMercIds.length, m.condition)
+          if (newTags.length > 0) {
+            newTags.forEach(tag => {
+              const desc = (SPECIALTY_TAG_DESC as Record<string, { label: string }>)[tag]
+              logs.push(`🏷 ${m.name} 전문성 획득: [${desc?.label ?? tag}]`)
+            })
+          }
+          return { ...withHistory, specialtyTags: [...withHistory.specialtyTags, ...newTags] }
+        })
         if (aq.assignedMercIds.length < 3) {
           const party = aq.assignedMercIds.map(id => nextMercs.find(m => m.id === id)).filter(Boolean) as Mercenary[]
           for (const mid of aq.assignedMercIds) {
