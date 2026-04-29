@@ -6,6 +6,7 @@ import type { Mercenary, Quest, ActiveQuest, GuildBuildings, CampaignState } fro
 import { calcRetirementChance, growthMultiplier, getDefectionThreshold } from './utils/retirement'
 import { IDLE_AMBITION_THRESHOLD } from './constants'
 import { getClient, clientGoldBonus, clientFamePenaltyMult, INITIAL_CLIENT_RELATION } from './data/clients'
+import { generateQuestReport } from './utils/report'
 
 // ── Display helpers ────────────────────────────────────────────────────────
 
@@ -554,6 +555,9 @@ interface SaveSlotData {
   roomLevels: Record<string, number>
   completedQuestIds: string[]
   clientRelations: Record<string, number>
+  urgentQuestIds: string[]
+  urgentQuestExpiries: Record<string, number>
+  pendingReports: import('./types').QuestReport[]
 }
 
 const SAVE_KEY = 'sma_guild_saves'
@@ -610,6 +614,7 @@ function App() {
   const [battleResultPage, setBattleResultPage] = useState(0)
   const [completedQuestIds, setCompletedQuestIds] = useState<string[]>([])
   const [clientRelations, setClientRelations] = useState<Record<string, number>>({})
+  const [pendingReports, setPendingReports] = useState<import('./types').QuestReport[]>([])
   const [showStoryModal, setShowStoryModal] = useState(false)
   const [storyContent, setStoryContent] = useState<{ questName: string; chainName: string; title: string; lines: string[] } | null>(null)
   const [saveSlots, setSaveSlots] = useState<(SaveSlotData | null)[]>(loadAllSaveSlots)
@@ -966,7 +971,8 @@ function App() {
       mercs, activeQuests, buildings,
       campaignState: state,
       questLog, gateArrivals, nextArrivalTime, nextMoraleDropAt,
-      questPool, roomLevels, completedQuestIds, clientRelations
+      questPool, roomLevels, completedQuestIds, clientRelations,
+      urgentQuestIds: [], urgentQuestExpiries: {}, pendingReports,
     }
     setSaveSlots(prev => {
       const next = [...prev]
@@ -1002,6 +1008,7 @@ function App() {
     setRoomLevels(data.roomLevels ?? { 길드마스터룸: 1, 훈련소: 1, 식당: 1 })
     setCompletedQuestIds(loadedCompleted)
     setClientRelations(data.clientRelations ?? {})
+    setPendingReports(data.pendingReports ?? [])
     setPendingAssign({})
     setSelectedMercId(null)
     setShowSaveModal(false)
@@ -1138,6 +1145,10 @@ function App() {
       // 야망: N일 비파견 시 불만 (idleDays 갱신은 아래에서)
       const newIdleDays = (m.idleDays ?? 0) + 1
       upd.idleDays = newIdleDays
+      // 연속 파견 피로 리셋 (2일 이상 쉬면 리셋)
+      if ((m.lastDispatchEndDay ?? 0) > 0 && nextDay - (m.lastDispatchEndDay ?? 0) >= 2) {
+        upd.consecutiveDispatches = 0
+      }
       if (newIdleDays >= IDLE_AMBITION_THRESHOLD && m.traits.ambition >= 70) {
         upd.favorability = Math.max(0, (upd.favorability ?? m.favorability) - 3)
         if (newIdleDays === IDLE_AMBITION_THRESHOLD) {
@@ -1253,6 +1264,7 @@ function App() {
     const perQuestPages: Array<{ questName: string; success: boolean; lines: string[] }> = []
     let questSuccessCount = 0
     let batchDeaths = 0
+    const pendingReportsLocal: import('./types').QuestReport[] = []
 
     for (const aq of completed) {
       const quest = ALL_QUESTS.find(q => q.id === aq.questId)!
@@ -1260,9 +1272,13 @@ function App() {
 
       nextMercs = nextMercs.map(m => {
         if (!aq.assignedMercIds.includes(m.id)) return m
+        const baseMs = quest.duration * 5 * 60 * 1000
+        const actualMs = aq.durationMs
+        const drainRatio = actualMs > 0 ? Math.max(0.4, Math.min(1.5, actualMs / baseMs)) : 1.0
+        const actualCondDrain = Math.round(quest.conditionDrain * drainRatio)
         const drain = (m.element === '얼음' && quest.element === '얼음')
-          ? Math.round(quest.conditionDrain * 0.5)
-          : quest.conditionDrain
+          ? Math.round(actualCondDrain * 0.5)
+          : actualCondDrain
         return { ...m, condition: Math.max(0, m.condition - drain) }
       })
       const assignedMercs = aq.assignedMercIds.map(id => nextMercs.find(m => m.id === id)).filter(Boolean) as Mercenary[]
@@ -1272,6 +1288,14 @@ function App() {
         questSuccessCount++
         fame += quest.reward.fame
         morale = Math.min(100, morale + 5)
+        // 퀘스트 타입별 특수 보상
+        if (quest.questType === 'combat' || quest.questType === 'hunt') {
+          const extraFame = Math.round(quest.reward.fame * 0.3)
+          if (extraFame > 0) { fame += extraFame; questLines.push(`⭐ 전투 명성 보너스 +${extraFame}`) }
+        }
+        if (quest.questType === 'support') {
+          morale = Math.min(100, morale + 3)
+        }
         const totalWages = assignedMercs.reduce((s, m) => s + (MISSION_PAY_PER_DAY[m.grade] ?? 15) * quest.duration, 0)
         const rewardGold = quest.reward.gold
         const guildGold = Math.max(0, rewardGold - totalWages)
@@ -1401,8 +1425,22 @@ function App() {
           })
         }
       }
-      nextMercs = nextMercs.map(m =>
-        aq.assignedMercIds.includes(m.id) && m.status === '파견중' ? { ...m, status: '대기중', idleDays: 0 } : m)
+      nextMercs = nextMercs.map(m => {
+        if (!aq.assignedMercIds.includes(m.id)) return m
+        if (m.status !== '파견중') return m
+        return {
+          ...m,
+          status: '대기중',
+          idleDays: 0,
+          lastDispatchEndDay: state.day,
+          consecutiveDispatches: (m.consecutiveDispatches ?? 0) + 1,
+        }
+      })
+      // 보고서 생성
+      const assignedMercsForReport = aq.assignedMercIds.map(id => mercs.find(m => m.id === id)).filter(Boolean) as Mercenary[]
+      const deadIdsForReport = aq.assignedMercIds.filter(id => !nextMercs.some(m => m.id === id))
+      const report = generateQuestReport(quest, assignedMercsForReport, success, deadIdsForReport)
+      pendingReportsLocal.push(report)
 
       logs.push(success ? `✅ [${quest.name}] 성공!` : `❌ [${quest.name}] 실패!`, ...questLines)
       perQuestPages.push({ questName: quest.name, success, lines: questLines })
@@ -1435,6 +1473,7 @@ function App() {
     setQuestLog(prev => [...prev, ...logs].slice(-20))
     setBattleResults(prev => [...prev, ...perQuestPages])
     setBattleResultPage(firstNewPage)
+    if (pendingReportsLocal.length > 0) setPendingReports(prev => [...prev, ...pendingReportsLocal])
     setShowLogModal(true)
     if (questSuccessCount > 0) setQuestsCompletedToday(prev => prev + questSuccessCount)
     if (batchDeaths > 0) setDeathsToday(prev => prev + batchDeaths)

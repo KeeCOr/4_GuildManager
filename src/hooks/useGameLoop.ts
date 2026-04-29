@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { Mercenary, ActiveQuest, CampaignState, GuildBuildings, QuestType } from '../types'
+import type { Mercenary, ActiveQuest, CampaignState, GuildBuildings, QuestType, QuestReport } from '../types'
 import { checkPotentialReveal } from '../utils/potential'
 import { ALL_QUESTS } from '../data/quests'
-import { MISSION_PAY_PER_DAY, URGENT_QUEST_MISS_FAME_PENALTY } from '../constants'
+import { MISSION_PAY_PER_DAY, URGENT_QUEST_MISS_FAME_PENALTY, CONSECUTIVE_DISPATCH_BURNOUT } from '../constants'
 import { xpMultiplier } from '../data/buildings'
 import { EXP_TO_NEXT } from '../data/mercenaries'
 import { calcSuccessRate, calcMercDeathRisk } from '../utils/quest'
@@ -10,6 +10,7 @@ import { updateQuestHistory, checkNewTags } from '../utils/specialty'
 import { SPECIALTY_TAG_DESC } from '../constants'
 import { getClient, clientGoldBonus, clientFamePenaltyMult, INITIAL_CLIENT_RELATION } from '../data/clients'
 import { growthMultiplier } from '../utils/retirement'
+import { generateQuestReport } from '../utils/report'
 
 interface GameLoopRefs {
   mercs: Mercenary[]
@@ -32,13 +33,14 @@ interface GameLoopCallbacks {
   setUrgentQuestIds: React.Dispatch<React.SetStateAction<string[]>>
   setUrgentQuestExpiries: React.Dispatch<React.SetStateAction<Record<string, number>>>
   setClientRelations: React.Dispatch<React.SetStateAction<Record<string, number>>>
+  setPendingReports: React.Dispatch<React.SetStateAction<QuestReport[]>>
 }
 
 export function useGameLoop(refs: GameLoopRefs, callbacks: GameLoopCallbacks) {
   const dataRef = useRef(refs)
   dataRef.current = refs
 
-  const { setMercs, setState, setActiveQuests, setQuestLog, setShowLogModal, onQuestResult, setUrgentQuestIds, setUrgentQuestExpiries, setClientRelations } = callbacks
+  const { setMercs, setState, setActiveQuests, setQuestLog, setShowLogModal, onQuestResult, setUrgentQuestIds, setUrgentQuestExpiries, setClientRelations, setPendingReports } = callbacks
 
   const processCompletions = useCallback(() => {
     const now = Date.now()
@@ -52,14 +54,19 @@ export function useGameLoop(refs: GameLoopRefs, callbacks: GameLoopCallbacks) {
     const logs: string[] = []
     const questResults: Array<{ success: boolean; deaths: number }> = []
     let totalMagicStones = 0
+    const pendingReportsLocal: QuestReport[] = []
 
     for (const aq of completed) {
       const quest = ALL_QUESTS.find(q => q.id === aq.questId)!
       nextMercs = nextMercs.map(m => {
         if (!aq.assignedMercIds.includes(m.id)) return m
+        const baseMs = quest.duration * 5 * 60 * 1000
+        const actualMs = aq.durationMs
+        const drainRatio = actualMs > 0 ? Math.max(0.4, Math.min(1.5, actualMs / baseMs)) : 1.0
+        const actualCondDrain = Math.round(quest.conditionDrain * drainRatio)
         const drain = (m.element === '얼음' && quest.element === '얼음')
-          ? Math.round(quest.conditionDrain * 0.5)
-          : quest.conditionDrain
+          ? Math.round(actualCondDrain * 0.5)
+          : actualCondDrain
         return { ...m, condition: Math.max(0, m.condition - drain) }
       })
       const assignedMercs = aq.assignedMercIds.map(id => nextMercs.find(m => m.id === id)).filter(Boolean) as Mercenary[]
@@ -69,6 +76,14 @@ export function useGameLoop(refs: GameLoopRefs, callbacks: GameLoopCallbacks) {
       if (success) {
         fame += quest.reward.fame
         morale = Math.min(100, morale + 5)
+        // 퀘스트 타입별 특수 보상
+        if (quest.questType === 'combat' || quest.questType === 'hunt') {
+          const extraFame = Math.round(quest.reward.fame * 0.3)
+          if (extraFame > 0) { fame += extraFame; logs.push(`⭐ 전투 명성 보너스 +${extraFame}`) }
+        }
+        if (quest.questType === 'support') {
+          morale = Math.min(100, morale + 3)
+        }
         const totalWages = assignedMercs.reduce((s, m) => s + (MISSION_PAY_PER_DAY[m.grade] ?? 15) * quest.duration, 0)
         const rewardGold = quest.reward.gold
         const guildGold = Math.max(0, rewardGold - totalWages)
@@ -224,8 +239,22 @@ export function useGameLoop(refs: GameLoopRefs, callbacks: GameLoopCallbacks) {
             ? { ...m, favorability: Math.max(0, m.favorability - 3) }
             : m)
       }
-      nextMercs = nextMercs.map(m =>
-        aq.assignedMercIds.includes(m.id) && m.status === '파견중' ? { ...m, status: '대기중', idleDays: 0, lastDispatchEndDay: dataRef.current.state.day } : m)
+      nextMercs = nextMercs.map(m => {
+        if (!aq.assignedMercIds.includes(m.id)) return m
+        if (m.status !== '파견중') return m
+        return {
+          ...m,
+          status: '대기중',
+          idleDays: 0,
+          lastDispatchEndDay: dataRef.current.state.day,
+          consecutiveDispatches: (m.consecutiveDispatches ?? 0) + 1,
+        }
+      })
+      // 보고서 생성
+      const assignedMercsForReport = aq.assignedMercIds.map(id => mercs.find(m => m.id === id)).filter(Boolean) as Mercenary[]
+      const deadIdsForReport = aq.assignedMercIds.filter(id => !nextMercs.some(m => m.id === id))
+      const report = generateQuestReport(quest, assignedMercsForReport, success, deadIdsForReport)
+      pendingReportsLocal.push(report)
       questResults.push({ success, deaths: questDeaths })
     }
 
@@ -248,8 +277,9 @@ export function useGameLoop(refs: GameLoopRefs, callbacks: GameLoopCallbacks) {
     setActiveQuests(prev => prev.filter(aq => aq.completesAt > now))
     setQuestLog(prev => [...prev, ...logs].slice(-20))
     if (logs.some(l => l.startsWith('✅') || l.startsWith('❌') || l.startsWith('💀'))) setShowLogModal(true)
+    if (pendingReportsLocal.length > 0) setPendingReports(prev => [...prev, ...pendingReportsLocal])
     for (const r of questResults) onQuestResult(r.success, r.deaths)
-  }, [setMercs, setState, setActiveQuests, setQuestLog, setShowLogModal, onQuestResult, setUrgentQuestIds, setUrgentQuestExpiries, setClientRelations])
+  }, [setMercs, setState, setActiveQuests, setQuestLog, setShowLogModal, onQuestResult, setUrgentQuestIds, setUrgentQuestExpiries, setClientRelations, setPendingReports])
 
   useEffect(() => {
     const timer = setInterval(processCompletions, 2_000)
