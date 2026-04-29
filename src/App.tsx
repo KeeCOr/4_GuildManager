@@ -583,7 +583,7 @@ function App() {
     hall: 1, barracks: 1, training: 1, tavern: 0, infirmary: 0
   })
   const [state, setState] = useState<CampaignState>({
-    day: 1, gold: 380, fame: 5, morale: 80, crystals: 5
+    day: 1, gold: 380, fame: 5, morale: 80, crystals: 5, magicStones: 0
   })
   const [questLog, setQuestLog] = useState<string[]>(['길드가 설립되었습니다. 계약을 수행해 명성을 쌓으세요.'])
 
@@ -1116,6 +1116,14 @@ function App() {
                    생존율: m.stats.생존율 + sb * 2, 협조성: m.stats.협조성 + sb } }
       }
       if (masterMercIds.has(m.id)) upd.favorability = Math.min(100, m.favorability + masterFav)
+      // 특수 훈련소 버프 갱신
+      const mageLv    = roomLevels['마법훈련소']   ?? 0
+      const rangerLv  = roomLevels['레인저훈련소'] ?? 0
+      const warriorLv = roomLevels['전사훈련소']   ?? 0
+      const eleBonus  = m.room === '마법훈련소'   && m.class === '마법사'  && mageLv > 0    ? [4,7,10][Math.min(mageLv-1,2)]    : 0
+      const surBonus  = m.room === '레인저훈련소' && (m.class === '궁수' || m.class === '도적') && rangerLv > 0  ? [5,10,15][Math.min(rangerLv-1,2)] : 0
+      const atkBonus  = m.room === '전사훈련소'   && m.class === '전사'   && warriorLv > 0 ? [5,10,15][Math.min(warriorLv-1,2)]: 0
+      upd.specialtyBonuses = { elementBonus: eleBonus, survBonus: surBonus, atkBonus }
       return Object.keys(upd).length > 0 ? { ...m, ...upd } : m
     })
 

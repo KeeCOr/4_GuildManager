@@ -17,12 +17,18 @@ export const ROOM_UPGRADE_COSTS: Record<string, readonly [number, number]> = {
   '길드마스터룸': [500, 1200],
   '훈련소':       [150, 350],
   '식당':         [200, 500],
+  '마법훈련소':   [300, 700],
+  '레인저훈련소': [250, 600],
+  '전사훈련소':   [280, 650],
 }
 
 export const ROOM_EFFECTS: Record<string, { desc: string[]; icon: string }> = {
   '길드마스터룸': { icon: '👑', desc: ['호감도+1/일', '호감도+2/일', '호감도+3/일'] },
   '훈련소':       { icon: '⚔️', desc: ['XP+1/일', 'XP+3/일', 'XP+6/일'] },
   '식당':         { icon: '🍖', desc: ['최대 6명 고용', '최대 9명, 도착+1명', '최대 12명, 도착+2명'] },
+  '마법훈련소':   { icon: '🔮', desc: ['속성 일치 +4% (마법사/마법계)', '속성 일치 +7%', '속성 일치 +10%'] },
+  '레인저훈련소': { icon: '🏹', desc: ['생존율 임시 +5 (궁수/도적)', '생존율 +10', '생존율 +15'] },
+  '전사훈련소':   { icon: '🛡', desc: ['공격력 임시 +5 (전사)', '공격력 +10', '공격력 +15'] },
 }
 
 export const upgradeBuildingCost = (id: keyof GuildBuildings, currentLevel: number): number => {
@@ -43,3 +49,8 @@ export const masterFavBonus     = (lv: number) => [1, 2, 3][Math.min(lv - 1, 2)]
 export const maxHireCap         = (lv: number) => [6, 9, 12][Math.min(lv - 1, 2)]
 export const diningArrivalBonus = (lv: number) => [0, 1, 2][Math.min(lv - 1, 2)]
 export const diningTavernBonus  = (lv: number) => [0, 1, 2][Math.min(lv - 1, 2)]
+
+export const mageTrainBonus   = (lv: number) => [4, 7, 10][Math.min(lv - 1, 2)]
+export const rangerTrainBonus = (lv: number) => [5, 10, 15][Math.min(lv - 1, 2)]
+export const warriorTrainBonus= (lv: number) => [5, 10, 15][Math.min(lv - 1, 2)]
+export const specialTrainCapacity = (lv: number) => [2, 3, 4][Math.min(lv - 1, 2)]

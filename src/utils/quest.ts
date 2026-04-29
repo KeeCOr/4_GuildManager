@@ -57,15 +57,30 @@ export function calcSuccessRate(quest: Quest, assignedIds: string[], allMercs: M
   if (classes.includes('전사'))   rate = Math.min(95, rate + 3)
   if (classes.includes('도적') && (quest.trapFocus || quest.conditionDrain >= 20)) rate = Math.min(95, rate + 10)
   for (const m of assigned.filter(m => m.element === quest.element)) {
+    const elementBuff = m.specialtyBonuses?.elementBonus ?? 0
     switch (m.element) {
-      case '불':   rate = Math.min(95, rate + 13); break
-      case '얼음': rate = Math.min(95, rate + 8);  break
-      case '번개': rate = Math.min(95, rate + 9);  break
-      case '자연': rate = Math.min(95, rate + 10); break
-      case '암흑': rate = Math.min(95, rate + 11); break
-      case '빛':   rate = Math.min(95, rate + 14); break
+      case '불':   rate = Math.min(95, rate + 13 + elementBuff); break
+      case '얼음': rate = Math.min(95, rate + 8  + elementBuff); break
+      case '번개': rate = Math.min(95, rate + 9  + elementBuff); break
+      case '자연': rate = Math.min(95, rate + 10 + elementBuff); break
+      case '암흑': rate = Math.min(95, rate + 11 + elementBuff); break
+      case '빛':   rate = Math.min(95, rate + 14 + elementBuff); break
     }
   }
+  // 마법사 고레벨(Lv5+) 속성 보너스
+  for (const m of assigned) {
+    if (m.class === '마법사' && m.level >= 5 && m.element === quest.element) {
+      rate = Math.min(95, rate + 5)
+    }
+  }
+  // 인간 종족 협력 보너스
+  const humanCount = assigned.filter(m => m.race === '인간').length
+  if (humanCount > 0) rate = Math.min(95, rate + humanCount * 2)
+  // 레인저훈련소 생존 버프 간접 반영
+  const rangerBuff = assigned.filter(
+    m => (m.class === '궁수' || m.class === '도적') && (m.specialtyBonuses?.survBonus ?? 0) > 0
+  ).length
+  if (rangerBuff > 0) rate = Math.min(95, rate + rangerBuff * 3)
   if (quest.trapFocus && quest.element === '암흑') {
     const darkMatch = assigned.filter(m => m.element === '암흑').length
     rate = Math.min(95, rate + darkMatch * 8)
@@ -107,7 +122,14 @@ export function calcMercDeathRisk(quest: Quest, merc: Mercenary, party: Mercenar
   const partyClasses = party.map(m => m.class)
   if (partyClasses.includes('성직자')) risk *= 0.65
   if (partyClasses.includes('전사') && merc.class !== '전사') risk *= 0.82
-  if (partyClasses.includes('도적') && quest.conditionDrain >= 20) risk *= 0.78
+  if (partyClasses.includes('도적') && quest.conditionDrain >= 20) risk *= 0.72
+  // 레인저훈련소 생존 버프
+  const survBuff = merc.specialtyBonuses?.survBonus ?? 0
+  if (survBuff > 0) risk *= Math.max(0.5, 1 - survBuff / 100)
+  // 엘프 + 마법사: 속성 일치 시 추가 생존
+  if (merc.race === '엘프' && merc.class === '마법사' && merc.element === quest.element) {
+    risk *= 0.88
+  }
   if (partySize < 3) {
     const survNorm = merc.stats.생존율 / 100
     risk *= 1.0 + (1 - partySize / 3) * (1.2 - survNorm * 0.9)

@@ -1,4 +1,5 @@
-import type { Mercenary } from '../types'
+import type { Mercenary, MercenaryGrade } from '../types'
+import { gradeWeightsByFame } from '../utils/fame'
 import { DEFAULT_WEAPON } from './weapons'
 export { WEAPONS, DEFAULT_WEAPON } from './weapons'
 export { ALL_QUESTS } from './quests'
@@ -8,28 +9,37 @@ export const initialMercenaries: Mercenary[] = [
     id: 'm1', name: '카이강', age: 22, race: '인간', class: '전사',
     grade: 'D', power: 28, element: '불', trap_disarm: 15, condition: 90, hp: 100,
     cost: 0, deathCost: 80,
-    traits: { cooperation: 65, ego: 50, gender: '남', synergy_factor: 1.0 },
+    traits: { cooperation: 65, ego: 50, gender: '남', synergy_factor: 1.0, ambition: 50, loyalty: 50, professionalism: 50, mentality: 50 },
     stats: { 공격력: 30, 함정해제: 15, 생존율: 35, 협조성: 65 },
     dailyWage: 18, favorability: 50, status: '대기중', room: '식당',
-    level: 1, experience: 0, expToNext: 100, weaponId: 'w_w1'
+    level: 1, experience: 0, expToNext: 100, weaponId: 'w_w1',
+    potential: { maxGrade: 'C', revealed: false, awakened: false },
+    specialtyTags: [], questHistory: {}, consecutiveDispatches: 0, lastDispatchEndDay: 0, idleDays: 0,
+    specialtyBonuses: { elementBonus: 0, survBonus: 0, atkBonus: 0 },
   },
   {
     id: 'm2', name: '미나원', age: 19, race: '인간', class: '궁수',
     grade: 'D', power: 25, element: '자연', trap_disarm: 18, condition: 85, hp: 100,
     cost: 0, deathCost: 80,
-    traits: { cooperation: 60, ego: 55, gender: '여', synergy_factor: 0.98 },
+    traits: { cooperation: 60, ego: 55, gender: '여', synergy_factor: 0.98, ambition: 50, loyalty: 50, professionalism: 50, mentality: 50 },
     stats: { 공격력: 28, 함정해제: 18, 생존율: 28, 협조성: 60 },
     dailyWage: 16, favorability: 50, status: '대기중', room: '식당',
-    level: 1, experience: 0, expToNext: 100, weaponId: 'w_a1'
+    level: 1, experience: 0, expToNext: 100, weaponId: 'w_a1',
+    potential: { maxGrade: 'C', revealed: false, awakened: false },
+    specialtyTags: [], questHistory: {}, consecutiveDispatches: 0, lastDispatchEndDay: 0, idleDays: 0,
+    specialtyBonuses: { elementBonus: 0, survBonus: 0, atkBonus: 0 },
   },
   {
     id: 'm3', name: '브란성', age: 24, race: '드워프', class: '도적',
     grade: 'C', power: 42, element: '암흑', trap_disarm: 45, condition: 80, hp: 100,
     cost: 0, deathCost: 150,
-    traits: { cooperation: 55, ego: 60, gender: '남', synergy_factor: 0.96 },
+    traits: { cooperation: 55, ego: 60, gender: '남', synergy_factor: 0.96, ambition: 50, loyalty: 50, professionalism: 50, mentality: 50 },
     stats: { 공격력: 35, 함정해제: 45, 생존율: 38, 협조성: 55 },
     dailyWage: 28, favorability: 50, status: '대기중', room: '식당',
-    level: 2, experience: 80, expToNext: 200, weaponId: 'w_r1'
+    level: 2, experience: 80, expToNext: 200, weaponId: 'w_r1',
+    potential: { maxGrade: 'B', revealed: false, awakened: false },
+    specialtyTags: [], questHistory: {}, consecutiveDispatches: 0, lastDispatchEndDay: 0, idleDays: 0,
+    specialtyBonuses: { elementBonus: 0, survBonus: 0, atkBonus: 0 },
   },
 ]
 
@@ -165,14 +175,42 @@ export function generateMercenary(tavernLevel = 0): Mercenary {
       cooperation,
       ego: Math.floor(Math.random() * 41) + 45,
       gender: Math.random() < 0.5 ? '남' : '여',
-      synergy_factor: Number((1 + raceMod.synergy * 0.01 + (Math.random() - 0.5) * 0.08).toFixed(2))
+      synergy_factor: Number((1 + raceMod.synergy * 0.01 + (Math.random() - 0.5) * 0.08).toFixed(2)),
+      ambition: Math.floor(Math.random() * 41) + 30,
+      loyalty: Math.floor(Math.random() * 41) + 30,
+      professionalism: Math.floor(Math.random() * 41) + 30,
+      mentality: Math.floor(Math.random() * 41) + 30,
     },
     stats, dailyWage,
     favorability: 50,
     status: '대기중', room: '식당',
     level: 1, experience: 0, expToNext: EXP_TO_NEXT(1),
-    weaponId: DEFAULT_WEAPON[cls]
+    weaponId: DEFAULT_WEAPON[cls],
+    potential: { maxGrade: grade, revealed: false, awakened: false },
+    specialtyTags: [], questHistory: {}, consecutiveDispatches: 0, lastDispatchEndDay: 0, idleDays: 0,
+    specialtyBonuses: { elementBonus: 0, survBonus: 0, atkBonus: 0 },
   }
 }
 
 export { EXP_TO_NEXT }
+
+export function weightedGradeByFame(tavernLevel: number, fame: number): MercenaryGrade {
+  const BASE_WEIGHTS: Record<string, number[]> = {
+    D: [65, 60, 40, 25, 15],
+    C: [30, 35, 40, 35, 25],
+    B: [5,  5,  18, 28, 30],
+    A: [0,  0,   2, 11, 25],
+    S: [0,  0,   0,  1,  5],
+  }
+  const fameWeights = gradeWeightsByFame(fame)
+  const grades: MercenaryGrade[] = ['D', 'C', 'B', 'A', 'S']
+  const lv = Math.min(tavernLevel, 4)
+  const weights = grades.map(g => (BASE_WEIGHTS[g]?.[lv] ?? 0) * (fameWeights[g] ?? 1))
+  const total = weights.reduce((a, b) => a + b, 0)
+  let r = Math.random() * total
+  for (let i = 0; i < grades.length; i++) {
+    r -= weights[i]
+    if (r <= 0) return grades[i]
+  }
+  return 'D'
+}

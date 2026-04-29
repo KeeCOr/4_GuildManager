@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Mercenary, ActiveQuest, CampaignState, GuildBuildings } from '../types'
 import { ALL_QUESTS } from '../data/quests'
-import { MISSION_PAY_PER_DAY } from '../constants'
+import { MISSION_PAY_PER_DAY, URGENT_QUEST_MISS_FAME_PENALTY } from '../constants'
 import { xpMultiplier } from '../data/buildings'
 import { EXP_TO_NEXT } from '../data/mercenaries'
 import { calcSuccessRate, calcMercDeathRisk } from '../utils/quest'
@@ -12,6 +12,8 @@ interface GameLoopRefs {
   buildings: GuildBuildings
   roomLevels: Record<string, number>
   activeQuests: ActiveQuest[]
+  urgentQuestIds: string[]
+  urgentQuestExpiries: Record<string, number>
 }
 
 interface GameLoopCallbacks {
@@ -21,13 +23,15 @@ interface GameLoopCallbacks {
   setQuestLog: React.Dispatch<React.SetStateAction<string[]>>
   setShowLogModal: React.Dispatch<React.SetStateAction<boolean>>
   onQuestResult: (success: boolean, deaths: number) => void
+  setUrgentQuestIds: React.Dispatch<React.SetStateAction<string[]>>
+  setUrgentQuestExpiries: React.Dispatch<React.SetStateAction<Record<string, number>>>
 }
 
 export function useGameLoop(refs: GameLoopRefs, callbacks: GameLoopCallbacks) {
   const dataRef = useRef(refs)
   dataRef.current = refs
 
-  const { setMercs, setState, setActiveQuests, setQuestLog, setShowLogModal, onQuestResult } = callbacks
+  const { setMercs, setState, setActiveQuests, setQuestLog, setShowLogModal, onQuestResult, setUrgentQuestIds, setUrgentQuestExpiries } = callbacks
 
   const processCompletions = useCallback(() => {
     const now = Date.now()
@@ -108,6 +112,11 @@ export function useGameLoop(refs: GameLoopRefs, callbacks: GameLoopCallbacks) {
         }
       } else {
         morale = Math.max(0, morale - 8)
+        const fameLoss = quest.famePenalty ?? 0
+        if (fameLoss > 0) {
+          fame = Math.max(0, fame - fameLoss)
+          logs.push(`⭐ 명성 -${fameLoss} (${quest.name} 실패)`)
+        }
         logs.push(`❌ [${quest.name}] 실패! 부대가 귀환했습니다.`)
         const failTotalWages = assignedMercs.reduce((s, m) => s + (MISSION_PAY_PER_DAY[m.grade] ?? 15) * quest.duration, 0)
         const expectedFailWage = Math.round(failTotalWages * 0.5)
@@ -140,13 +149,27 @@ export function useGameLoop(refs: GameLoopRefs, callbacks: GameLoopCallbacks) {
       questResults.push({ success, deaths: questDeaths })
     }
 
+    const { urgentQuestIds, urgentQuestExpiries } = dataRef.current
+    const nowMs = Date.now()
+    const expiredIds = urgentQuestIds.filter(qid => (urgentQuestExpiries[qid] ?? Infinity) <= nowMs)
+    if (expiredIds.length > 0) {
+      fame = Math.max(0, fame - expiredIds.length * URGENT_QUEST_MISS_FAME_PENALTY)
+      logs.push(`⚠ 긴급 의뢰 ${expiredIds.length}건 미수주 — 명성 -${expiredIds.length * URGENT_QUEST_MISS_FAME_PENALTY}`)
+      setUrgentQuestIds(prev => prev.filter(id => !expiredIds.includes(id)))
+      setUrgentQuestExpiries(prev => {
+        const next = { ...prev }
+        expiredIds.forEach(id => delete next[id])
+        return next
+      })
+    }
+
     setMercs(nextMercs)
     setState(prev => ({ ...prev, day: state.day, gold: Math.max(0, g), fame: Math.max(0, fame), morale }))
     setActiveQuests(prev => prev.filter(aq => aq.completesAt > now))
     setQuestLog(prev => [...prev, ...logs].slice(-20))
     if (logs.some(l => l.startsWith('✅') || l.startsWith('❌') || l.startsWith('💀'))) setShowLogModal(true)
     for (const r of questResults) onQuestResult(r.success, r.deaths)
-  }, [setMercs, setState, setActiveQuests, setQuestLog, setShowLogModal, onQuestResult])
+  }, [setMercs, setState, setActiveQuests, setQuestLog, setShowLogModal, onQuestResult, setUrgentQuestIds, setUrgentQuestExpiries])
 
   useEffect(() => {
     const timer = setInterval(processCompletions, 2_000)

@@ -8,48 +8,56 @@ export const ALL_QUESTS: Quest[] = [
   {
     id: 'q20', name: '길드 심부름', difficulty: 18, slots: 4, minSlots: 1, duration: 1,
     deathRisk: 0.00, conditionDrain: 2, dailyGoldCost: 0, element: '자연', trapFocus: false,
+    questType: 'support', famePenalty: 0, clientId: 'guild', isUrgentEligible: false,
     description: '인근 길드에 서류를 전달합니다. 누구나 할 수 있는 가벼운 심부름.',
     reward: { gold: 18, fame: 1, exp: 7 }
   },
   {
     id: 'q21', name: '약초 수집', difficulty: 35, slots: 4, minSlots: 1, duration: 1,
     deathRisk: 0.01, conditionDrain: 3, dailyGoldCost: 1, element: '자연', trapFocus: false,
+    questType: 'support', famePenalty: 1, clientId: 'church', isUrgentEligible: false,
     description: '마을 약재상 의뢰로 근교 숲에서 약초를 수집합니다.',
     reward: { gold: 28, fame: 2, exp: 11 }
   },
   {
     id: 'q1', name: '쥐 사냥', difficulty: 30, slots: 4, minSlots: 1, duration: 1,
     deathRisk: 0.01, conditionDrain: 8, dailyGoldCost: 1, element: '자연', trapFocus: false,
+    questType: 'combat', famePenalty: 1, clientId: 'merchant', isUrgentEligible: false,
     description: '마을 창고를 침입한 쥐 떼를 제거합니다. 초보에게 적합.',
     reward: { gold: 32, fame: 2, exp: 14 }
   },
   {
     id: 'q11', name: '마을 치유 봉사', difficulty: 55, slots: 4, minSlots: 1, duration: 1,
     deathRisk: 0.01, conditionDrain: 5, dailyGoldCost: 1, element: '빛', trapFocus: false,
+    questType: 'support', famePenalty: 1, clientId: 'church', isUrgentEligible: false,
     description: '역병이 도는 마을에서 부상자를 치료합니다. 성직자가 있으면 효율이 크게 높아집니다.',
     reward: { gold: 40, fame: 3, exp: 16 }
   },
   {
     id: 'q22', name: '불량배 제압', difficulty: 68, slots: 4, minSlots: 1, duration: 1,
     deathRisk: 0.02, conditionDrain: 7, dailyGoldCost: 2, element: '암흑', trapFocus: false,
+    questType: 'combat', famePenalty: 2, clientId: 'merchant', isUrgentEligible: false,
     description: '시장 근처를 어슬렁대는 불량배들을 쫓아냅니다.',
     reward: { gold: 44, fame: 3, exp: 16 }
   },
   {
     id: 'q23', name: '유령 퇴치', difficulty: 82, slots: 4, minSlots: 1, duration: 1,
     deathRisk: 0.02, conditionDrain: 6, dailyGoldCost: 2, element: '빛', trapFocus: false,
+    questType: 'combat', famePenalty: 2, clientId: 'church', isUrgentEligible: false,
     description: '폐가에 출몰하는 유령을 퇴치합니다. 빛 속성 용병이 유리합니다.',
     reward: { gold: 50, fame: 3, exp: 18 }
   },
   {
     id: 'q24', name: '광부 구조', difficulty: 105, slots: 4, minSlots: 1, duration: 1,
     deathRisk: 0.03, conditionDrain: 10, dailyGoldCost: 2, element: '불', trapFocus: true,
+    questType: 'trap', famePenalty: 2, clientId: 'guild', isUrgentEligible: false,
     description: '붕괴 사고가 난 광산에서 매몰 광부를 구출합니다. 함정 해제 능력이 도움이 됩니다.',
     reward: { gold: 58, fame: 4, exp: 22 }
   },
   {
     id: 'q2', name: '야간 경비', difficulty: 50, slots: 4, minSlots: 1, duration: 2,
     deathRisk: 0.02, conditionDrain: 10, dailyGoldCost: 2, element: '암흑', trapFocus: false,
+    questType: 'patrol', famePenalty: 2, clientId: 'noble', isUrgentEligible: false,
     description: '마을 외곽 야간 순찰 및 경비 임무입니다.',
     reward: { gold: 88, fame: 4, exp: 22 },
     chainId: 'dark', chainName: '어둠의 각성',
@@ -66,6 +74,7 @@ export const ALL_QUESTS: Quest[] = [
   {
     id: 'q3', name: '상인 호위', difficulty: 85, slots: 4, minSlots: 1, duration: 2,
     deathRisk: 0.04, conditionDrain: 12, dailyGoldCost: 4, element: '자연', trapFocus: false,
+    questType: 'escort', famePenalty: 3, clientId: 'merchant', isUrgentEligible: false,
     description: '인근 도시까지 상인 일행을 호위합니다.',
     reward: { gold: 120, fame: 6, exp: 32 },
     chainId: 'shadow', chainName: '밀수의 그림자',
@@ -82,6 +91,7 @@ export const ALL_QUESTS: Quest[] = [
   {
     id: 'q12', name: '얼음 동굴 수색', difficulty: 90, slots: 4, minSlots: 1, duration: 2,
     deathRisk: 0.03, conditionDrain: 14, dailyGoldCost: 3, element: '얼음', trapFocus: false,
+    questType: 'dungeon', famePenalty: 3, clientId: 'mage', isUrgentEligible: false,
     description: '마을 근처 얼음 동굴에서 실종자를 수색합니다. 혹한 환경으로 생존율 관리가 중요합니다.',
     reward: { gold: 115, fame: 5, exp: 30 },
     chainId: 'ice', chainName: '얼음 아래의 비밀',
@@ -101,6 +111,7 @@ export const ALL_QUESTS: Quest[] = [
   {
     id: 'q13', name: '독숲 정찰', difficulty: 145, slots: 4, minSlots: 1, duration: 2,
     deathRisk: 0.06, conditionDrain: 18, dailyGoldCost: 6, element: '자연', trapFocus: true,
+    questType: 'patrol', famePenalty: 4, clientId: 'guild', isUrgentEligible: false,
     description: '독가스와 함정이 가득한 마법 숲을 정찰합니다. 도적의 함정해제가 시너지를 이룹니다.',
     reward: { gold: 155, fame: 7, exp: 44 },
     chainId: 'dark', chainName: '어둠의 각성',
@@ -119,18 +130,21 @@ export const ALL_QUESTS: Quest[] = [
   {
     id: 'q4', name: '도둑단 소탕', difficulty: 150, slots: 4, minSlots: 2, duration: 3,
     deathRisk: 0.08, conditionDrain: 18, dailyGoldCost: 7, element: '불', trapFocus: false,
+    questType: 'hunt', famePenalty: 5, clientId: 'noble', isUrgentEligible: false,
     description: '주변을 위협하는 도둑단을 소탕합니다. C급 이상 권장.',
     reward: { gold: 230, fame: 11, exp: 52 }
   },
   {
     id: 'q5', name: '광산 함정 해제', difficulty: 180, slots: 4, minSlots: 2, duration: 3,
     deathRisk: 0.10, conditionDrain: 20, dailyGoldCost: 9, element: '암흑', trapFocus: true,
+    questType: 'trap', famePenalty: 5, clientId: 'merchant', isUrgentEligible: true,
     description: '버려진 광산에서 함정을 해제하고 자원을 회수합니다. 도적·함정해제 권장.',
     reward: { gold: 260, fame: 13, exp: 62 }
   },
   {
     id: 'q14', name: '번개 정령 포획', difficulty: 185, slots: 4, minSlots: 2, duration: 3,
     deathRisk: 0.08, conditionDrain: 18, dailyGoldCost: 8, element: '번개', trapFocus: false,
+    questType: 'monster', famePenalty: 5, clientId: 'mage', isUrgentEligible: true,
     description: '폭주하는 번개 정령을 포획해 마법사 조합에 납품합니다.',
     reward: { gold: 245, fame: 11, exp: 58 }
   },
@@ -139,6 +153,7 @@ export const ALL_QUESTS: Quest[] = [
   {
     id: 'q15', name: '설원 요새 탈환', difficulty: 245, slots: 4, minSlots: 2, duration: 4,
     deathRisk: 0.10, conditionDrain: 24, dailyGoldCost: 10, element: '얼음', trapFocus: false,
+    questType: 'combat', famePenalty: 6, clientId: 'military', isUrgentEligible: true,
     description: '얼음 마족에게 점령된 요새를 탈환합니다. 성직자의 회복 지원이 핵심입니다.',
     reward: { gold: 480, fame: 17, exp: 80 },
     chainId: 'ice', chainName: '얼음 아래의 비밀',
@@ -157,6 +172,7 @@ export const ALL_QUESTS: Quest[] = [
   {
     id: 'q6', name: '밀수단 추적', difficulty: 260, slots: 4, minSlots: 2, duration: 4,
     deathRisk: 0.12, conditionDrain: 22, dailyGoldCost: 11, element: '번개', trapFocus: false,
+    questType: 'hunt', famePenalty: 6, clientId: 'noble', isUrgentEligible: true,
     description: '왕국 물자를 횡령한 밀수단을 추적 체포합니다. B급 이상 권장.',
     reward: { gold: 520, fame: 19, exp: 84 },
     chainId: 'shadow', chainName: '밀수의 그림자',
@@ -175,12 +191,14 @@ export const ALL_QUESTS: Quest[] = [
   {
     id: 'q16', name: '성소 수호 임무', difficulty: 285, slots: 4, minSlots: 2, duration: 4,
     deathRisk: 0.09, conditionDrain: 16, dailyGoldCost: 12, element: '빛', trapFocus: false,
+    questType: 'patrol', famePenalty: 5, clientId: 'church', isUrgentEligible: true,
     description: '어둠의 세력이 침범하는 성소에서 사제들을 수호합니다. 성직자의 빛 속성이 큰 우위를 가져옵니다.',
     reward: { gold: 560, fame: 21, exp: 90 }
   },
   {
     id: 'q7', name: '귀족 저택 장기 경비', difficulty: 300, slots: 4, minSlots: 2, duration: 5,
     deathRisk: 0.08, conditionDrain: 15, dailyGoldCost: 13, element: '빛', trapFocus: false,
+    questType: 'patrol', famePenalty: 5, clientId: 'noble', isUrgentEligible: true,
     description: '귀족 저택에서 장기 경비 임무를 수행합니다. B급 이상 권장.',
     reward: { gold: 700, fame: 26, exp: 98 }
   },
@@ -189,18 +207,21 @@ export const ALL_QUESTS: Quest[] = [
   {
     id: 'q17', name: '마법사 탑 잠입', difficulty: 390, slots: 4, minSlots: 2, duration: 5,
     deathRisk: 0.15, conditionDrain: 26, dailyGoldCost: 16, element: '번개', trapFocus: true,
+    questType: 'dungeon', famePenalty: 8, clientId: 'rogue', isUrgentEligible: true,
     description: '마법 함정이 가득한 탑에 잠입해 금지된 마법서를 회수합니다. 마법사와 도적의 조합이 이상적입니다.',
     reward: { gold: 850, fame: 34, exp: 138 }
   },
   {
     id: 'q9', name: '북방 약탈자 토벌', difficulty: 520, slots: 4, minSlots: 3, duration: 5,
     deathRisk: 0.18, conditionDrain: 25, dailyGoldCost: 18, element: '얼음', trapFocus: false,
+    questType: 'combat', famePenalty: 10, clientId: 'military', isUrgentEligible: true,
     description: '북방 대규모 약탈자 집단을 격멸합니다. A급 이상 권장.',
     reward: { gold: 920, fame: 52, exp: 175 }
   },
   {
     id: 'q8', name: '던전 탐사', difficulty: 420, slots: 4, minSlots: 3, duration: 6,
     deathRisk: 0.20, conditionDrain: 28, dailyGoldCost: 18, element: '암흑', trapFocus: true,
+    questType: 'dungeon', famePenalty: 8, clientId: 'mage', isUrgentEligible: true,
     description: '심층 던전에서 유물을 회수합니다. A급 이상 권장. 함정해제 필수.',
     reward: { gold: 1050, fame: 40, exp: 155 },
     chainId: 'dark', chainName: '어둠의 각성',
@@ -219,6 +240,7 @@ export const ALL_QUESTS: Quest[] = [
   {
     id: 'q18', name: '빙원 극지 원정', difficulty: 490, slots: 4, minSlots: 3, duration: 6,
     deathRisk: 0.16, conditionDrain: 32, dailyGoldCost: 20, element: '얼음', trapFocus: false,
+    questType: 'monster', famePenalty: 10, clientId: 'military', isUrgentEligible: true,
     description: '극지방 빙원을 원정하며 고대 유물을 수습합니다. 성직자 치유와 전사 방어가 필수입니다.',
     reward: { gold: 1100, fame: 47, exp: 168 },
     chainId: 'ice', chainName: '얼음 아래의 비밀',
@@ -239,6 +261,7 @@ export const ALL_QUESTS: Quest[] = [
   {
     id: 'q10', name: '드래곤 토벌', difficulty: 700, slots: 4, minSlots: 4, duration: 8,
     deathRisk: 0.35, conditionDrain: 40, dailyGoldCost: 30, element: '불', trapFocus: false,
+    questType: 'monster', famePenalty: 20, clientId: 'military', isUrgentEligible: false,
     description: '대륙 최강 드래곤을 토벌합니다. S급 필요. 극고위험.',
     reward: { gold: 1400, fame: 125, exp: 330 }
   },
