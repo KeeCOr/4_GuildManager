@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { Mercenary, ActiveQuest, CampaignState, GuildBuildings } from '../types'
+import type { Mercenary, ActiveQuest, CampaignState, GuildBuildings, QuestType } from '../types'
+import { checkPotentialReveal } from '../utils/potential'
 import { ALL_QUESTS } from '../data/quests'
 import { MISSION_PAY_PER_DAY, URGENT_QUEST_MISS_FAME_PENALTY } from '../constants'
 import { xpMultiplier } from '../data/buildings'
@@ -48,6 +49,7 @@ export function useGameLoop(refs: GameLoopRefs, callbacks: GameLoopCallbacks) {
     let nextMercs = [...mercs]
     const logs: string[] = []
     const questResults: Array<{ success: boolean; deaths: number }> = []
+    let totalMagicStones = 0
 
     for (const aq of completed) {
       const quest = ALL_QUESTS.find(q => q.id === aq.questId)!
@@ -88,12 +90,17 @@ export function useGameLoop(refs: GameLoopRefs, callbacks: GameLoopCallbacks) {
           const sb = level - m.level
           const growMult = growthMultiplier(m.age)
           const statGain = Math.max(1, Math.round(sb * growMult))
-          return { ...m, level, experience: exp, expToNext,
+          const leveled = { ...m, level, experience: exp, expToNext,
             favorability: Math.min(100, m.favorability + 5),
             power: m.power + statGain * 4,
             trap_disarm: m.trap_disarm + statGain * 2,
             stats: { 공격력: m.stats.공격력 + statGain * 2, 함정해제: m.stats.함정해제 + statGain * 2,
                      생존율: m.stats.생존율 + statGain * 2, 협조성: m.stats.협조성 + statGain } }
+          const potentialChecked = checkPotentialReveal(leveled)
+          if (potentialChecked.potential.revealed && !m.potential.revealed) {
+            logs.push(`✨ ${m.name}의 잠재력 공개! — 최대 ${potentialChecked.potential.maxGrade}급`)
+          }
+          return potentialChecked
         })
         if (!wageFullyPaid && totalWages > 0) {
           nextMercs = nextMercs.map(m => {
@@ -131,6 +138,14 @@ export function useGameLoop(refs: GameLoopRefs, callbacks: GameLoopCallbacks) {
             }
           }
         }
+        // 마석 드랍 (던전/몬스터/사냥 퀘스트)
+        const MAGIC_STONE_TYPES: QuestType[] = ['dungeon', 'monster', 'hunt']
+        let magicStonesDrop = 0
+        if (quest.questType && MAGIC_STONE_TYPES.includes(quest.questType) && Math.random() < 0.15) {
+          magicStonesDrop = 1
+          logs.push(`💎 마석 1개 획득! (${quest.name})`)
+        }
+        totalMagicStones += magicStonesDrop
       } else {
         morale = Math.max(0, morale - 8)
         const clientId = quest.clientId
@@ -196,7 +211,7 @@ export function useGameLoop(refs: GameLoopRefs, callbacks: GameLoopCallbacks) {
 
     setClientRelations(localClientRelations)
     setMercs(nextMercs)
-    setState(prev => ({ ...prev, day: state.day, gold: Math.max(0, g), fame: Math.max(0, fame), morale }))
+    setState(prev => ({ ...prev, day: state.day, gold: Math.max(0, g), fame: Math.max(0, fame), morale, magicStones: Math.min(99, (prev.magicStones ?? 0) + totalMagicStones) }))
     setActiveQuests(prev => prev.filter(aq => aq.completesAt > now))
     setQuestLog(prev => [...prev, ...logs].slice(-20))
     if (logs.some(l => l.startsWith('✅') || l.startsWith('❌') || l.startsWith('💀'))) setShowLogModal(true)

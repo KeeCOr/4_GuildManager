@@ -982,7 +982,8 @@ function App() {
     if (!data) return
     setMercs(data.mercs.map(m => {
       const migrated = (m.room === '대장간' as string || m.room === '숙소' as string) ? { ...m, room: '식당' as const } : m
-      return { ...migrated, weaponId: migrated.weaponId ?? DEFAULT_WEAPON[migrated.class] }
+      const withWeapon = { ...migrated, weaponId: migrated.weaponId ?? DEFAULT_WEAPON[migrated.class] }
+      return { ...withWeapon, potential: withWeapon.potential ?? { maxGrade: withWeapon.grade ?? 'D', revealed: false, awakened: false } }
     }))
     setActiveQuests(data.activeQuests.map((aq: any) => {
       if (typeof aq.completesAt === 'number') return aq as ActiveQuest
@@ -991,7 +992,7 @@ function App() {
       return { questId: aq.questId, assignedMercIds: aq.assignedMercIds, completesAt: Date.now() + dur, durationMs: dur } as ActiveQuest
     }))
     setBuildings(data.buildings)
-    setState({ ...data.campaignState, crystals: data.campaignState.crystals ?? 5 })
+    setState({ ...data.campaignState, crystals: data.campaignState.crystals ?? 5, magicStones: data.campaignState?.magicStones ?? 0 })
     setQuestLog(data.questLog)
     setGateArrivals(data.gateArrivals)
     setNextArrivalTime(data.nextArrivalTime ?? (Date.now() + ARRIVAL_INTERVAL_MS))

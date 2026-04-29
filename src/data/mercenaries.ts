@@ -1,6 +1,7 @@
 import type { Mercenary, MercenaryGrade } from '../types'
 import { gradeWeightsByFame } from '../utils/fame'
 import { DEFAULT_WEAPON } from './weapons'
+import { rollPotential } from '../utils/potential'
 export { WEAPONS, DEFAULT_WEAPON } from './weapons'
 export { ALL_QUESTS } from './quests'
 
@@ -25,7 +26,7 @@ export const initialMercenaries: Mercenary[] = [
     stats: { 공격력: 28, 함정해제: 18, 생존율: 28, 협조성: 60 },
     dailyWage: 16, favorability: 50, status: '대기중', room: '식당',
     level: 1, experience: 0, expToNext: 100, weaponId: 'w_a1',
-    potential: { maxGrade: 'C', revealed: false, awakened: false },
+    potential: { maxGrade: 'B', revealed: false, awakened: false },
     specialtyTags: [], questHistory: {}, consecutiveDispatches: 0, lastDispatchEndDay: 0, idleDays: 0,
     specialtyBonuses: { elementBonus: 0, survBonus: 0, atkBonus: 0 },
   },
@@ -37,7 +38,7 @@ export const initialMercenaries: Mercenary[] = [
     stats: { 공격력: 35, 함정해제: 45, 생존율: 38, 협조성: 55 },
     dailyWage: 28, favorability: 50, status: '대기중', room: '식당',
     level: 2, experience: 80, expToNext: 200, weaponId: 'w_r1',
-    potential: { maxGrade: 'B', revealed: false, awakened: false },
+    potential: { maxGrade: 'A', revealed: true, awakened: false },
     specialtyTags: [], questHistory: {}, consecutiveDispatches: 0, lastDispatchEndDay: 0, idleDays: 0,
     specialtyBonuses: { elementBonus: 0, survBonus: 0, atkBonus: 0 },
   },
@@ -186,7 +187,7 @@ export function generateMercenary(tavernLevel = 0): Mercenary {
     status: '대기중', room: '식당',
     level: 1, experience: 0, expToNext: EXP_TO_NEXT(1),
     weaponId: DEFAULT_WEAPON[cls],
-    potential: { maxGrade: grade, revealed: false, awakened: false },
+    potential: rollPotential(grade),
     specialtyTags: [], questHistory: {}, consecutiveDispatches: 0, lastDispatchEndDay: 0, idleDays: 0,
     specialtyBonuses: { elementBonus: 0, survBonus: 0, atkBonus: 0 },
   }
