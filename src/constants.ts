@@ -1,3 +1,5 @@
+import type { QuestType, SpecialtyTag } from './types'
+
 export const RACE_ICONS: Record<string, string> = {
   엘프: '🧝', 인간: '⚜️', 드워프: '⛏️', 수인: '🐺',
 }
@@ -51,3 +53,37 @@ export const RACE_BONUS_DESC: Record<string, string> = {
   드워프: '생존율·전사 특화',
   수인: '도적·은밀 특화',
 }
+
+export const QUEST_TYPE_LABEL: Record<QuestType, string> = {
+  combat: '전투', escort: '호위', dungeon: '던전', trap: '함정',
+  hunt: '사냥', monster: '몬스터', support: '지원', patrol: '순찰',
+}
+
+export const QUEST_TYPE_ICON: Record<QuestType, string> = {
+  combat: '⚔️', escort: '🛡', dungeon: '🏚', trap: '🔧',
+  hunt: '🏹', monster: '🐉', support: '🕊️', patrol: '👁',
+}
+
+export const SPECIALTY_TAG_DESC: Record<SpecialtyTag, { label: string; effect: string }> = {
+  dungeon_veteran:  { label: '던전 베테랑',    effect: '던전 성공률 +12%, 사망위험 ×0.85' },
+  escort_expert:    { label: '호위 전문가',    effect: '호위 성공률 +10%, 금화 +10%' },
+  trap_specialist:  { label: '함정 전문가',    effect: '함정해제 ×1.3' },
+  survivor:         { label: '생존의 귀재',    effect: '사망위험 ×0.80' },
+  lone_wolf:        { label: '고독한 전사',    effect: '단독 파견 효율 ×1.15' },
+  iron_will:        { label: '강철 의지',      effect: '컨디션 최소치 5까지 파견 가능' },
+  beast_slayer:     { label: '야수 사냥꾼',    effect: '몬스터/사냥 성공률 +10%' },
+  shadow_walker:    { label: '그림자 보행자',  effect: '암흑 속성 일치 보너스 +5%' },
+}
+
+export const MAGIC_STONE_COSTS = {
+  revealPotential: 1,
+  rerollPotential: 3,
+  forceAwaken: 5,
+} as const
+
+export const URGENT_QUEST_FAME_THRESHOLD = 180
+export const URGENT_QUEST_EXPIRY_DAYS = 3
+export const URGENT_QUEST_MISS_FAME_PENALTY = 5
+
+export const CONSECUTIVE_DISPATCH_BURNOUT = 3
+export const IDLE_AMBITION_THRESHOLD = 3
