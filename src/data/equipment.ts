@@ -320,7 +320,7 @@ export const rollQuestDrop = (difficulty: number): Equipment | null => {
 
 /** Generate merchant stock for a given guild level (1–4+) */
 export const generateMerchantStock = (guildLevel: number): Equipment[] => {
-  const lvKey = Math.min(guildLevel, 4) as 1 | 2 | 3 | 4
+  const lvKey = Math.max(1, Math.min(guildLevel, 4)) as 1 | 2 | 3 | 4
   const weights = MERCHANT_GRADE_WEIGHTS[lvKey]
   const entries = Object.entries(weights) as [EquipGrade, number][]
   const total = entries.reduce((s, [, w]) => s + w, 0)
