@@ -1,6 +1,4 @@
 import type { Mercenary } from '../types'
-import { DEFAULT_WEAPON } from './weapons'
-export { WEAPONS, DEFAULT_WEAPON } from './weapons'
 export { ALL_QUESTS } from './quests'
 
 export const initialMercenaries: Mercenary[] = [
@@ -10,8 +8,8 @@ export const initialMercenaries: Mercenary[] = [
     cost: 0, deathCost: 80,
     traits: { cooperation: 65, ego: 50, gender: '남', synergy_factor: 1.0 },
     stats: { 공격력: 30, 함정해제: 15, 생존율: 35, 협조성: 65 },
-    dailyWage: 18, favorability: 50, status: '대기중', room: '식당',
-    level: 1, experience: 0, expToNext: 100, weaponId: 'w_w1'
+    dailyWage: 18, favorability: 50, morale: 70, status: '대기중', room: '식당',
+    level: 1, experience: 0, expToNext: 100, equipment: { weapon: null, head: null, body: null, accessory: null }
   },
   {
     id: 'm2', name: '미나원', age: 19, race: '인간', class: '궁수',
@@ -19,8 +17,8 @@ export const initialMercenaries: Mercenary[] = [
     cost: 0, deathCost: 80,
     traits: { cooperation: 60, ego: 55, gender: '여', synergy_factor: 0.98 },
     stats: { 공격력: 28, 함정해제: 18, 생존율: 28, 협조성: 60 },
-    dailyWage: 16, favorability: 50, status: '대기중', room: '식당',
-    level: 1, experience: 0, expToNext: 100, weaponId: 'w_a1'
+    dailyWage: 16, favorability: 50, morale: 70, status: '대기중', room: '식당',
+    level: 1, experience: 0, expToNext: 100, equipment: { weapon: null, head: null, body: null, accessory: null }
   },
   {
     id: 'm3', name: '브란성', age: 24, race: '드워프', class: '도적',
@@ -28,8 +26,8 @@ export const initialMercenaries: Mercenary[] = [
     cost: 0, deathCost: 150,
     traits: { cooperation: 55, ego: 60, gender: '남', synergy_factor: 0.96 },
     stats: { 공격력: 35, 함정해제: 45, 생존율: 38, 협조성: 55 },
-    dailyWage: 28, favorability: 50, status: '대기중', room: '식당',
-    level: 2, experience: 80, expToNext: 200, weaponId: 'w_r1'
+    dailyWage: 28, favorability: 50, morale: 70, status: '대기중', room: '식당',
+    level: 2, experience: 80, expToNext: 200, equipment: { weapon: null, head: null, body: null, accessory: null }
   },
 ]
 
@@ -169,9 +167,10 @@ export function generateMercenary(tavernLevel = 0): Mercenary {
     },
     stats, dailyWage,
     favorability: 50,
+    morale: 70,
     status: '대기중', room: '식당',
     level: 1, experience: 0, expToNext: EXP_TO_NEXT(1),
-    weaponId: DEFAULT_WEAPON[cls]
+    equipment: { weapon: null, head: null, body: null, accessory: null }
   }
 }
 
