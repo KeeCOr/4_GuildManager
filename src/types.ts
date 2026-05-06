@@ -5,7 +5,10 @@ export type MercenaryGrade = 'D' | 'C' | 'B' | 'A' | 'S'
 export type MercenaryStatus = '대기중' | '파견중' | '부상' | '영혼'
 export type BuildingId = 'hall' | 'barracks' | 'training' | 'tavern' | 'infirmary'
 export type RoomId = '훈련소' | '길드마스터룸' | '식당'
+export type EquipSlot = 'weapon' | 'head' | 'body' | 'accessory'
+export type EquipGrade = 'D' | 'C' | 'B' | 'A' | 'S'
 
+// Keep Weapon for backward-compat during migration only — will be removed after
 export interface Weapon {
   id: string
   name: string
@@ -18,6 +21,58 @@ export interface Weapon {
   survBonus: number
   upgradeCost: number
   raceBonus: Partial<Record<Race, number>>
+}
+
+export interface PassiveEffect {
+  type:
+    | 'quest_success_morale'       // quest success: morale +N
+    | 'same_element_death_resist'  // death risk -N% on element-matched quest
+    | 'trap_bonus'                 // trap success rate +N%
+    | 'survival_bonus'             // surv stat +N (flat)
+    | 'morale_recovery_on_kill'    // quest success morale +N (stacks with base)
+    | 'guild_fame_bonus'           // fame +N on quest success
+  value: number
+  condition?: string               // UI display text
+}
+
+export interface SetBonus {
+  requiredCount: 2 | 3 | 4
+  description: string
+  effects: PassiveEffect[]
+}
+
+export interface Equipment {
+  id: string
+  name: string
+  slot: EquipSlot
+  grade: EquipGrade
+  setId?: string
+  powerBonus: number
+  atkBonus: number
+  trapBonus: number
+  survBonus: number
+  moraleBonus: number            // morale cap adjustment while equipped
+  classBonus?: Partial<Record<MercenaryClass, number>>  // extra powerBonus per class
+  passive?: PassiveEffect
+  buyCost: number                // base buy price (merchant charges × 1.2)
+  icon: string
+}
+
+export interface SetDefinition {
+  id: string
+  name: string
+  bonuses: SetBonus[]
+}
+
+export interface ActiveDungeon {
+  id: string
+  name: string
+  maxFloor: number
+  currentFloor: number           // 1-indexed, next floor to attempt
+  clearedFloors: number
+  element: '불' | '얼음' | '번개' | '자연' | '암흑' | '빛'
+  status: 'active' | 'completed' | 'abandoned'
+  activeDungeonQuestId?: string  // ActiveQuest ID for the currently dispatched floor
 }
 
 export interface Traits {
@@ -51,8 +106,14 @@ export interface Mercenary {
   }
   dailyWage: number
   favorability: number
+  morale: number
   status: MercenaryStatus
-  weaponId: string
+  equipment: {
+    weapon:    string | null   // Equipment.id
+    head:      string | null
+    body:      string | null
+    accessory: string | null
+  }
   room: RoomId
   level: number
   experience: number
@@ -88,6 +149,7 @@ export interface ActiveQuest {
   assignedMercIds: string[]
   completesAt: number
   durationMs: number
+  dungeonFloor?: number          // set if this ActiveQuest is a dungeon floor dispatch
 }
 
 export interface GuildBuildings {
@@ -106,6 +168,12 @@ export interface CampaignState {
   crystals: number
 }
 
+export interface MerchantState {
+  active: boolean
+  stock: Equipment[]
+  departsAt: number
+}
+
 export interface SaveSlotData {
   name: string
   day: number
@@ -121,4 +189,7 @@ export interface SaveSlotData {
   questPool: string[]
   roomLevels: Record<string, number>
   completedQuestIds: string[]
+  guildInventory: Equipment[]
+  merchantState: MerchantState | null
+  activeDungeon: ActiveDungeon | null
 }
