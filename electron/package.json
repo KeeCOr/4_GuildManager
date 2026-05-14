@@ -12,6 +12,7 @@
     "productName": "길드 매니저",
     "copyright": "Copyright © 2026 Stoic Entertainment",
     "win": {
+      "icon": "icon.ico",
       "target": [
         {
           "target": "portable",
