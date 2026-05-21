@@ -160,7 +160,9 @@
   <a href="#classes">직업 / 종족</a>
   <a href="#elements">속성 시스템</a>
   <a href="#passives">패시브 시스템</a>
-  <a href="#weapons">무기 시스템</a>
+  <a href="#equipment">장비 시스템</a>
+  <a href="#dungeon">던전 시스템</a>
+  <a href="#merchant">상인 시스템</a>
   <div class="section-label">콘텐츠</div>
   <a href="#quests">퀘스트 목록</a>
   <a href="#chains">퀘스트 체인</a>
@@ -184,14 +186,14 @@
 
   <!-- Hero -->
   <div class="hero" id="overview">
-    <p class="label">Game Design Document · v1.1.68 · 2026-05-07</p>
+    <p class="label">Game Design Document · v1.1.71 · 2026-05-21</p>
     <h1>아이언홀드 용병단 길드</h1>
     <p class="sub">중세 암흑 판타지 × 길드 경영 시뮬레이션 — 4_GM</p>
     <div class="badges">
       <span class="badge badge-purple">⚛ React 18 + TypeScript</span>
       <span class="badge badge-gold">🏰 1600×900 Fixed Canvas</span>
-      <span class="badge badge-green">📜 23 퀘스트</span>
-      <span class="badge badge-blue">🗡 15 무기</span>
+      <span class="badge badge-green">📜 30+ 퀘스트</span>
+      <span class="badge badge-blue">🗡 100+ 장비</span>
       <span class="badge badge-red">👥 5 직업 × 4 종족</span>
       <span class="badge badge-purple">💾 3슬롯 자동저장</span>
     </div>
@@ -279,14 +281,14 @@
   </div>
 
   <h3>실효 전력 공식</h3>
-  <div class="formula">effPower(m) = (m.power + weaponPowerBonus) × ageMult × (0.4 + 0.6 × condition/100) × favMod
+  <div class="formula">power = atk × 0.55 + surv × 0.25 + trap × 0.12 + grade_bonus × 12 + mage_bonus × 4
 
-ageMult:
-  age ≥ 55 → 0.0   (파견 불가)
-  age ≥ 38 → 1.0 - (age - 38) / 34 × 0.5   (최대 -50%)
-  age < 38 → 1.0
+effPower(m) = base × (0.4 + 0.6 × condition/100) × favMod × moraleMod
 
-favMod = 1 + (favorability - 50) / 500   // 범위: 0.9 ~ 1.1</div>
+favMod = 1 + (favorability - 50) / 500   // 범위: 0.9 ~ 1.1
+moraleMod = 0.8 + 0.2 × (morale / 100)
+
+combatPower = (attack + eq_attack) × (0.4 + 0.6 × condition / 100)</div>
 
   <h3>등급 시스템</h3>
   <div class="tbl-wrap">
@@ -319,7 +321,7 @@ favMod = 1 + (favorability - 50) / 500   // 범위: 0.9 ~ 1.1</div>
   <!-- 나이 시스템 -->
   <h2 id="age"><span class="icon">⌛</span> 나이 시스템</h2>
   <div class="info-box info-purple">
-    게임일은 <strong>실제 자정(midnight)</strong>마다 +1 증가. 용병은 게임일 경과에 따라 나이가 들며, 나이가 많을수록 레벨업 시 <strong>능력치 상승률이 낮아진다</strong>. 노쇠·파견 불가 개념은 없음.
+    게임일은 <strong>실제 자정(midnight)</strong>마다 +1 증가. 용병은 게임일 경과에 따라 나이가 들며, 나이가 많을수록 레벨업 시 <strong>능력치 상승률이 낮아진다</strong>. 나이 동결(<code>ageLockedUntil</code>)로 일시 방지 가능. 공식: <code>ageFactor = max(0.4, 1 - max(0, age - 20) × 0.012)</code>
   </div>
   <div class="tbl-wrap">
     <table>
@@ -375,10 +377,10 @@ favMod = 1 + (favorability - 50) / 500   // 범위: 0.9 ~ 1.1</div>
     <table>
       <thead><tr><th>케미 구간</th><th>등급</th><th>성공률 보정</th><th>사망위험 배율</th></tr></thead>
       <tbody>
-        <tr><td>80~100</td><td style="color:#86efac;font-weight:700;">최고</td><td>+10%</td><td>×0.80</td></tr>
+        <tr><td>80~100</td><td style="color:#86efac;font-weight:700;">최고</td><td>+12%</td><td>×0.78</td></tr>
         <tr><td>60~79</td><td style="color:#fcd34d;font-weight:700;">양호</td><td>+5%</td><td>×0.90</td></tr>
-        <tr><td>40~59</td><td style="color:#fb923c;font-weight:700;">불안</td><td>±0%</td><td>×1.00</td></tr>
-        <tr><td>0~39</td><td style="color:#fca5a5;font-weight:700;">최악</td><td>-8%</td><td>×1.20</td></tr>
+        <tr><td>40~59</td><td style="color:#fb923c;font-weight:700;">불안</td><td>-8%</td><td>×1.12</td></tr>
+        <tr><td>0~39</td><td style="color:#fca5a5;font-weight:700;">최악</td><td>-18%</td><td>×1.30</td></tr>
       </tbody>
     </table>
   </div>
@@ -449,15 +451,14 @@ favMod = 1 + (favorability - 50) / 500   // 범위: 0.9 ~ 1.1</div>
 
   <h3>상성 사이클</h3>
   <div class="info-box info-gold">
-    <strong>삼각 사이클:</strong> 🔥 불 → 🌿 자연 → 🧊 얼음 → 🔥 불 (강함 방향)<br>
-    <strong>빛/암흑:</strong> ✨ 빛 ↔ 🌑 암흑 (서로 상성 불리)<br>
+    <strong>삼각 사이클:</strong> 🔥 불 → 🌿 자연 → ✨ 빛 → 🌑 암흑 → 🧊 얼음 → 🔥 불 (강함 방향)<br>
     <strong>사망위험 보정:</strong> 일치 ×0.50 · 유리 ×0.85 · 불리 ×1.15<br>
     <strong>암흑 + 함정 퀘스트:</strong> 암흑 속성 용병 1명당 추가 성공률 +6%
   </div>
 
   <!-- 패시브 시스템 -->
   <h2 id="passives"><span class="icon">⭐</span> 패시브 & 등급 성장 시스템</h2>
-  <p>용병은 등급에 따라 패시브 슬롯이 늘어난다. 10레벨마다 등급이 오르고 새 패시브가 랜덤 배정된다. 특정 패시브 조합은 시너지 보너스를 추가로 제공한다.</p>
+  <p>용병은 등급에 따라 패시브 슬롯이 늘어난다. 10레벨마다 등급이 오르고 새 패시브가 랜덤 배정된다. <strong>21종 패시브</strong> 풀에서 선택되며, 특정 패시브 조합은 <strong>8쌍 시너지</strong> 보너스를 추가로 제공한다.</p>
 
   <h3>등급별 패시브 슬롯</h3>
   <div class="tbl-wrap">
@@ -527,68 +528,138 @@ favMod = 1 + (favorability - 50) / 500   // 범위: 0.9 ~ 1.1</div>
     <strong>수정:</strong> 원정이 수정의 주요 수입원 — 고급 새로고침, 나이 동결에 활용.
   </div>
 
-  <!-- 무기 시스템 -->
-  <h2 id="weapons"><span class="icon">🗡</span> 무기 시스템</h2>
-  <p>용병은 직업별 무기를 3티어(낡은 → 중급 → 상급)로 업그레이드 가능. 종족 친화 보너스 추가.</p>
+  <!-- 장비 시스템 -->
+  <h2 id="equipment"><span class="icon">🗡</span> 장비 시스템</h2>
+  <p>용병은 <strong>4개 장비 슬롯</strong>(무기·머리·몸통·장신구)에 아이템을 장착할 수 있다. D~S등급 100종 이상의 장비가 존재하며, 세트 보너스와 S급 패시브 효과를 제공한다.</p>
 
-  <h3>전사 무기</h3>
+  <h3>장비 슬롯 (4종)</h3>
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th>티어</th><th>무기</th><th>전력</th><th>공격</th><th>생존</th><th>업그레이드 비용</th><th>종족 친화</th></tr></thead>
+      <thead><tr><th>슬롯</th><th>장비 종류</th><th>주요 효과</th></tr></thead>
       <tbody>
-        <tr><td>T1</td><td>🗡 낡은 검</td><td>0</td><td>0</td><td>0</td><td>100G</td><td>드워프+2, 수인+1, 인간+1</td></tr>
-        <tr><td>T2</td><td>⚔ 강철 대검</td><td>+5</td><td>+4</td><td>0</td><td>260G</td><td>드워프+4, 수인+2, 인간+1</td></tr>
-        <tr><td>T3</td><td>⚜ 영웅의 검</td><td>+12</td><td>+10</td><td>+3</td><td>최종</td><td>드워프+5, 수인+3, 인간+2</td></tr>
+        <tr><td>🗡 무기</td><td>검·단검·활·지팡이·철퇴 (직업별)</td><td>전력, 공격력, 직업 시너지</td></tr>
+        <tr><td>🪖 머리</td><td>투구·후드·관·밴드·모자</td><td>생존율, HP, 함정해제</td></tr>
+        <tr><td>🛡 몸통</td><td>판금·가죽·로브·망토·체인</td><td>전력, 생존율, 사기</td></tr>
+        <tr><td>💍 장신구</td><td>반지·부적·팔찌 등</td><td>다양한 부가 효과</td></tr>
       </tbody>
     </table>
   </div>
 
-  <h3>궁수 무기</h3>
+  <h3>등급별 가격대</h3>
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th>티어</th><th>무기</th><th>전력</th><th>공격</th><th>함정</th><th>업그레이드 비용</th><th>종족 친화</th></tr></thead>
+      <thead><tr><th>등급</th><th>D</th><th>C</th><th>B</th><th>A</th><th>S</th></tr></thead>
       <tbody>
-        <tr><td>T1</td><td>🏹 낡은 단궁</td><td>0</td><td>0</td><td>0</td><td>90G</td><td>엘프+2, 인간+1</td></tr>
-        <tr><td>T2</td><td>🏹 장궁</td><td>+5</td><td>+4</td><td>+4</td><td>240G</td><td>엘프+4, 인간+1</td></tr>
-        <tr><td>T3</td><td>🎯 황금 석궁</td><td>+12</td><td>+9</td><td>+9</td><td>최종</td><td>엘프+5, 인간+2</td></tr>
+        <tr><td>기본가</td><td>45~65G</td><td>115~160G</td><td>230~310G</td><td>400~520G</td><td>740~920G</td></tr>
+        <tr><td>상인 매입가</td><td>×1.2</td><td>×1.2</td><td>×1.2</td><td>×1.2</td><td>×1.2</td></tr>
       </tbody>
     </table>
   </div>
 
-  <h3>도적 무기</h3>
+  <h3>직업별 무기 라인</h3>
+  <div class="card-grid cols-3">
+    <div class="card">
+      <h3 style="margin-top:0">⚔️ 전사 — 검</h3>
+      <p class="note">D~S, 전력 2~20, 전사 시너지 +1~7</p>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">🏹 궁수 — 활</h3>
+      <p class="note">D~S, 전력 2~19, 함정 +1~12, 궁수 시너지 +1~7</p>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">🗡️ 도적 — 단검</h3>
+      <p class="note">D~S, 전력 2~18, 함정 +3~22, 도적 시너지 +1~7</p>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">🪄 마법사 — 지팡이</h3>
+      <p class="note">D~S, 전력 2~21, 공격 +3~22, 마법사 시너지 +1~7</p>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">🕊️ 성직자 — 철퇴</h3>
+      <p class="note">D~S, 전력 2~18, 생존 +2~16, 성직자 시너지 +1~7</p>
+    </div>
+  </div>
+
+  <h3>세트 보너스 (5종)</h3>
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th>티어</th><th>무기</th><th>전력</th><th>공격</th><th>함정</th><th>업그레이드 비용</th><th>종족 친화</th></tr></thead>
+      <thead><tr><th>세트</th><th>필요 조각</th><th>효과</th></tr></thead>
       <tbody>
-        <tr><td>T1</td><td>🔪 낡은 단검</td><td>0</td><td>0</td><td>0</td><td>85G</td><td>수인+2, 인간+1</td></tr>
-        <tr><td>T2</td><td>💉 독 단검</td><td>+5</td><td>+3</td><td>+8</td><td>220G</td><td>수인+4, 인간+1</td></tr>
-        <tr><td>T3</td><td>🌑 그림자 칼날</td><td>+12</td><td>+7</td><td>+18</td><td>최종</td><td>수인+5, 인간+2</td></tr>
+        <tr><td>🛡 Steel Wall (강철 성벽)</td><td>2~4</td><td>생존율, 사망위험 감소</td></tr>
+        <tr><td>🌑 Shadow (그림자)</td><td>2~4</td><td>함정해제, 공격력 보너스</td></tr>
+        <tr><td>📖 Sage (현자)</td><td>2~4</td><td>전력, 명성 보너스</td></tr>
+        <tr><td>🌿 Nature (자연)</td><td>2~4</td><td>사기 회복, 생존율 보너스</td></tr>
+        <tr><td>✨ Priest (성직)</td><td>2~4</td><td>생존율, HP 보너스</td></tr>
       </tbody>
     </table>
   </div>
 
-  <h3>마법사 무기</h3>
+  <h3>S급 장비 특수 효과</h3>
+  <div class="info-box info-gold">
+    S등급 장비는 고유 패시브 효과를 추가로 제공한다:<br>
+    퀘스트 성공 시 사기 +4~5 / 함정 보너스 +8~12% / 생존율 +4~5 / 명성 추가 +2~3 / 속성 일치 사망 저항 -8~12% / 처치 시 사기 회복 +4~5
+  </div>
+
+  <div class="info-box info-purple">
+    <strong>인벤토리 상한:</strong> 40개. 초과 시 장비 구매 불가.
+  </div>
+
+  <!-- 던전 시스템 -->
+  <h2 id="dungeon"><span class="icon">🏰</span> 던전 시스템</h2>
+  <p>퀘스트 완료 시 확률적으로 던전이 발견된다. 파티를 유지한 채 층을 진행하며 높은 보상을 노린다.</p>
+
+  <h3>던전 발견 확률 (퀘스트 티어별)</h3>
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th>티어</th><th>무기</th><th>전력</th><th>공격</th><th>업그레이드 비용</th><th>종족 친화</th></tr></thead>
+      <thead><tr><th>티어 1</th><th>티어 2</th><th>티어 3</th><th>티어 4</th><th>티어 5</th></tr></thead>
       <tbody>
-        <tr><td>T1</td><td>🪄 낡은 지팡이</td><td>0</td><td>0</td><td>100G</td><td>엘프+2, 인간+1</td></tr>
-        <tr><td>T2</td><td>🔮 수정 완드</td><td>+6</td><td>+6</td><td>280G</td><td>엘프+5, 인간+1</td></tr>
-        <tr><td>T3</td><td>📖 고대 마법서</td><td>+14</td><td>+14</td><td>최종</td><td>엘프+6, 인간+2</td></tr>
+        <tr><td>3%</td><td>5%</td><td>8%</td><td>12%</td><td>30%</td></tr>
       </tbody>
     </table>
   </div>
 
-  <h3>성직자 무기</h3>
+  <h3>층수 범위 (티어별)</h3>
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th>티어</th><th>무기</th><th>전력</th><th>공격</th><th>생존</th><th>업그레이드 비용</th><th>종족 친화</th></tr></thead>
+      <thead><tr><th>티어 1</th><th>티어 2</th><th>티어 3</th><th>티어 4</th><th>티어 5</th></tr></thead>
       <tbody>
-        <tr><td>T1</td><td>🔨 낡은 철퇴</td><td>0</td><td>0</td><td>0</td><td>95G</td><td>인간+2, 엘프+1</td></tr>
-        <tr><td>T2</td><td>✨ 성스러운 철퇴</td><td>+5</td><td>+3</td><td>+5</td><td>250G</td><td>인간+3, 엘프+2</td></tr>
-        <tr><td>T3</td><td>💫 성검</td><td>+12</td><td>+7</td><td>+10</td><td>최종</td><td>인간+4, 엘프+3</td></tr>
+        <tr><td>1~3층</td><td>2~5층</td><td>4~7층</td><td>6~10층</td><td>8~10층</td></tr>
       </tbody>
     </table>
+  </div>
+
+  <h3>던전 공식</h3>
+  <div class="formula">층별 난이도 = questDifficulty × 0.8 × (1 + floor × 0.3)
+  예: 난이도 100 퀘스트 → 1층=104, 5층=192, 10층=320
+
+층별 보상:
+  금화 = floor × 80 (1층=80G ~ 10층=800G)
+  경험치 = floor × 25
+  완주 보너스 = maxFloor × 200 금화 + maxFloor × 5 명성
+  장비 드랍 = 5층 이상에서 확률적 발생
+
+사망위험 = min(0.98, baseRisk × (1 + floor × 0.15))</div>
+
+  <!-- 상인 시스템 -->
+  <h2 id="merchant"><span class="icon">🛒</span> 상인 시스템</h2>
+  <p>랜덤 주기로 상인이 방문한다. 출발 타이머 카운트다운 내에 장비를 구매해야 한다.</p>
+  <div class="card-grid cols-2">
+    <div class="card">
+      <h3 style="margin-top:0">상인 재고</h3>
+      <ul class="dot-list">
+        <li>방문 시 5~12개 랜덤 장비 진열</li>
+        <li>등급 가중치 기반 랜덤 생성</li>
+        <li>기본가 × 1.2 상인 마크업</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">인벤토리 관리</h3>
+      <ul class="dot-list">
+        <li>최대 40개 보유 가능</li>
+        <li>장비 모달에서 장착/해제</li>
+        <li>불필요 장비 정리 필요</li>
+      </ul>
+    </div>
   </div>
 
   <!-- 퀘스트 목록 -->
@@ -636,7 +707,7 @@ favMod = 1 + (favorability - 50) / 500   // 범위: 0.9 ~ 1.1</div>
         <tr><td>q4</td><td>도둑단 소탕</td><td>150</td><td>2~4</td><td>3단계</td><td>8%</td><td>18</td><td>🔥</td><td></td><td>135G / 10⭐ / 50XP</td><td></td></tr>
         <tr><td>q5</td><td>광산 함정 해제</td><td>180</td><td>2~4</td><td>3단계</td><td>10%</td><td>20</td><td>🌑</td><td>🔧</td><td>195G / 12⭐ / 60XP</td><td></td></tr>
         <tr><td>q13</td><td>독숲 정찰</td><td>145</td><td>1~4</td><td>2단계</td><td>6%</td><td>18</td><td>🌿</td><td>🔧</td><td>120G / 7⭐ / 46XP</td><td>어둠의 각성 ② (q2 선행)</td></tr>
-        <tr><td>q14</td><td>번개 정령 포획</td><td>185</td><td>2~4</td><td>3단계</td><td>8%</td><td>18</td><td>⚡</td><td></td><td>170G / 10⭐ / 58XP</td><td></td></tr>
+        <tr><td>q14</td><td>번개 정령 포획</td><td>185</td><td>2~4</td><td>3단계</td><td>8%</td><td>18</td><td>🌑</td><td></td><td>170G / 10⭐ / 58XP</td><td></td></tr>
       </tbody>
     </table>
   </div>
@@ -646,7 +717,7 @@ favMod = 1 + (favorability - 50) / 500   // 범위: 0.9 ~ 1.1</div>
     <table>
       <thead><tr><th>ID</th><th>이름</th><th>난이도</th><th>슬롯</th><th>시간</th><th>사망위험</th><th>컨디션</th><th>속성</th><th>함정</th><th>보상 (금/명/경)</th><th>체인</th></tr></thead>
       <tbody>
-        <tr><td>q6</td><td>밀수단 추적</td><td>260</td><td>2~4</td><td>4단계</td><td>12%</td><td>22</td><td>⚡</td><td></td><td>285G / 18⭐ / 80XP</td><td>밀수의 그림자 ② (q3 선행)</td></tr>
+        <tr><td>q6</td><td>밀수단 추적</td><td>260</td><td>2~4</td><td>4단계</td><td>12%</td><td>22</td><td>🌑</td><td></td><td>285G / 18⭐ / 80XP</td><td>밀수의 그림자 ② (q3 선행)</td></tr>
         <tr><td>q7</td><td>귀족 저택 장기 경비</td><td>300</td><td>2~4</td><td>5단계</td><td>8%</td><td>15</td><td>✨</td><td></td><td>430G / 22⭐ / 90XP</td><td></td></tr>
         <tr><td>q15</td><td>설원 요새 탈환</td><td>245</td><td>2~4</td><td>4단계</td><td>10%</td><td>24</td><td>🧊</td><td></td><td>265G / 16⭐ / 78XP</td><td>얼음 아래의 비밀 ② (q12 선행)</td></tr>
         <tr><td>q16</td><td>성소 수호 임무</td><td>285</td><td>2~4</td><td>4단계</td><td>9%</td><td>16</td><td>✨</td><td></td><td>325G / 20⭐ / 88XP</td><td></td></tr>
@@ -661,7 +732,7 @@ favMod = 1 + (favorability - 50) / 500   // 범위: 0.9 ~ 1.1</div>
       <tbody>
         <tr><td>q8</td><td>던전 탐사</td><td>420</td><td>3~4</td><td>6단계</td><td>20%</td><td>28</td><td>🌑</td><td>🔧</td><td>1,000G / 35⭐ / 140XP</td><td>어둠의 각성 ③ (q13 선행)</td></tr>
         <tr><td>q9</td><td>북방 약탈자 토벌</td><td>520</td><td>3~4</td><td>5단계</td><td>18%</td><td>25</td><td>🧊</td><td></td><td>1,100G / 45⭐ / 160XP</td><td></td></tr>
-        <tr><td>q17</td><td>마법사 탑 잠입</td><td>390</td><td>2~4</td><td>5단계</td><td>15%</td><td>26</td><td>⚡</td><td>🔧</td><td>900G / 30⭐ / 130XP</td><td></td></tr>
+        <tr><td>q17</td><td>마법사 탑 잠입</td><td>390</td><td>2~4</td><td>5단계</td><td>15%</td><td>26</td><td>🌑</td><td>🔧</td><td>900G / 30⭐ / 130XP</td><td></td></tr>
         <tr><td>q18</td><td>빙원 극지 원정</td><td>490</td><td>3~4</td><td>6단계</td><td>16%</td><td>32</td><td>🧊</td><td></td><td>1,200G / 40⭐ / 155XP</td><td>얼음 아래의 비밀 ③ (q15 선행)</td></tr>
       </tbody>
     </table>
@@ -690,20 +761,19 @@ ratio > 1.0 → mult = max(0.30, 1.0 - (min(ratio, 3.0) - 1.0) / 2.0 × 0.70)
   ratio 2.5 → mult 0.475 (-53%)
   ratio 3.0+ → mult 0.30 (최대 -70%)
 
-번개 속성 일치 시 위 mult에 추가 곱산:
-  번개 1명 → ×0.88, 2명 → ×0.76, 3명 → ×0.64 (최소 ×0.60)</div>
+최대 단축: -70% (mult=0.30)</div>
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th>단계</th><th>기본</th><th>ratio=1.5</th><th>ratio=2.0</th><th>ratio=3.0+</th><th>번개 2명 추가</th></tr></thead>
+      <thead><tr><th>단계</th><th>기본</th><th>ratio=1.5</th><th>ratio=2.0</th><th>ratio=3.0+</th><th>비고</th></tr></thead>
       <tbody>
-        <tr><td>1단계</td><td>5분</td><td>4분</td><td>3분</td><td>1.5분</td><td>×0.76</td></tr>
-        <tr><td>2단계</td><td>15분</td><td>12분</td><td>10분</td><td>4.5분</td><td>×0.76</td></tr>
-        <tr><td>3단계</td><td>30분</td><td>25분</td><td>20분</td><td>9분</td><td>×0.76</td></tr>
-        <tr><td>4단계</td><td>60분</td><td>50분</td><td>39분</td><td>18분</td><td>×0.76</td></tr>
-        <tr><td>5단계</td><td>90분</td><td>74분</td><td>59분</td><td>27분</td><td>×0.76</td></tr>
-        <tr><td>6단계</td><td>120분</td><td>99분</td><td>78분</td><td>36분</td><td>×0.76</td></tr>
-        <tr><td>7단계</td><td>180분</td><td>149분</td><td>117분</td><td>54분</td><td>×0.76</td></tr>
-        <tr><td>8단계</td><td>240분</td><td>198분</td><td>156분</td><td>72분</td><td>×0.76</td></tr>
+        <tr><td>1단계</td><td>5분</td><td>4분</td><td>3분</td><td>1.5분</td><td>—</td></tr>
+        <tr><td>2단계</td><td>15분</td><td>12분</td><td>10분</td><td>4.5분</td><td>—</td></tr>
+        <tr><td>3단계</td><td>30분</td><td>25분</td><td>20분</td><td>9분</td><td>—</td></tr>
+        <tr><td>4단계</td><td>60분</td><td>50분</td><td>39분</td><td>18분</td><td>—</td></tr>
+        <tr><td>5단계</td><td>90분</td><td>74분</td><td>59분</td><td>27분</td><td>—</td></tr>
+        <tr><td>6단계</td><td>120분</td><td>99분</td><td>78분</td><td>36분</td><td>—</td></tr>
+        <tr><td>7단계</td><td>180분</td><td>149분</td><td>117분</td><td>54분</td><td>—</td></tr>
+        <tr><td>8단계</td><td>240분</td><td>198분</td><td>156분</td><td>72분</td><td>—</td></tr>
       </tbody>
     </table>
   </div>
@@ -836,13 +906,13 @@ ratio > 1.0 → mult = max(0.30, 1.0 - (min(ratio, 3.0) - 1.0) / 2.0 × 0.70)
       </ul>
     </div>
     <div class="card">
-      <div style="font-size:22px;">🌾</div>
-      <h3 style="margin-top:8px;margin-bottom:8px;">식량</h3>
+      <div style="font-size:22px;">💎</div>
+      <h3 style="margin-top:8px;margin-bottom:8px;">수정 (Crystal)</h3>
       <ul class="dot-list">
-        <li>용병 1명당 5/일 소비</li>
-        <li>파견 중 추가 소비</li>
-        <li>퀘스트 보상으로 획득</li>
-        <li>고갈 시 컨디션 급락</li>
+        <li>고급 새로고침 (5수정)</li>
+        <li>나이 동결 (3수정)</li>
+        <li>원정 보상 (순위별 1~15)</li>
+        <li>용병 사망 시 +1</li>
       </ul>
     </div>
     <div class="card">
@@ -900,9 +970,9 @@ base = min(95, powerRatio × 75 + 10)   // powerRatio = totalEffPower / quest.di
 전사 포함   → +3%
 도적 포함 (함정·고컨디션소모 퀘스트) → +10%
 
-// 속성 일치 보너스 (용병마다)
-불=+13%, 얼음=+8%, 번개=+9%, 자연=+10%, 암흑=+11%, 빛=+14%
-암흑 + trapFocus 퀘스트: 추가 +8%/명
+// 속성 보정 (용병마다)
+유리 속성: +10% / 불리 속성: -5%
+암흑 + trapFocus 퀘스트: 추가 +6%/명
 trapFocus 퀘스트 totalTrap≥80: +10%, ≥50: +5%
 
 // 슬롯 채움 페널티
@@ -915,9 +985,16 @@ condition < 25  → -20%
 condition < 50  → -10%
 
 // 케미 점수 보정
-chem ≥ 80 → +10%
-chem ≥ 60 → +5%
-chem < 40  → -8%
+chem ≥ 80 → +12%
+chem < 60  → -8%
+chem < 40  → -18%
+
+// 동종족 시너지
+같은 종족 2명+ → 추가 +5%/명
+
+// 사기 보정
+morale < 30 → -15%
+morale < 50 → -8%
 
 최종 = clamp(5, 95)</div>
 
@@ -1025,7 +1102,7 @@ condition < 50 → ×1.5</div>
         <li>전사 1~2명 (탱커·생존보장)</li>
         <li>마법사 or 궁수 (최대 딜)</li>
         <li>성직자 (파티 사망률 -35%)</li>
-        <li>속성 일치: 불(+13%), 번개(+9%)</li>
+        <li>속성 유리: +10% 성공률</li>
       </ul>
     </div>
     <div class="card">
@@ -1033,7 +1110,7 @@ condition < 50 → ×1.5</div>
       <ul class="dot-list">
         <li>도적 필수 (함정해제 최고)</li>
         <li>궁수 보조 (함정 +함정해제 병행)</li>
-        <li>암흑 속성 일치 시 함정 적중 +15%</li>
+        <li>암흑 속성 용병 +6%/명 추가 성공률</li>
         <li>totalTrap ≥ 80 달성 시 성공률 +10%</li>
       </ul>
     </div>
@@ -1077,7 +1154,7 @@ condition < 50 → ×1.5</div>
   <div class="divider"></div>
 
   <!-- 개발 히스토리 -->
-  <h2 id="devhistory"><span class="icon">🛠</span> 개발 히스토리 (v1.1.0 → v1.1.68)</h2>
+  <h2 id="devhistory"><span class="icon">🛠</span> 개발 히스토리 (v1.1.0 → v1.1.71)</h2>
   <p>단일 파일 God Component에서 출발해 기능별 모듈로 분리하고 시스템을 단계적으로 확장한 기록.</p>
 
   <div class="card" style="margin-bottom:20px;">
@@ -1104,6 +1181,8 @@ condition < 50 → ×1.5</div>
     <div class="ver-row"><span class="ver-tag">v1.1.62~63</span><span class="ver-desc">장비 시스템 100종, 세트 정의, 상인 시스템, 던전 시스템</span></div>
     <div class="ver-row"><span class="ver-tag">v1.1.64~67</span><span class="ver-desc">원정 보상 확장 — 수정(💎) + 장비 드랍 추가; ExpeditionResult 타입 업데이트</span></div>
     <div class="ver-row"><span class="ver-tag">v1.1.68</span><span class="ver-desc">💎 고급 새로고침 — 5수정 소비, B급 이상 보장 (C:5%, B:30%, A:45%, S:20%)</span></div>
+    <div class="ver-row"><span class="ver-tag">v1.1.69~70</span><span class="ver-desc">장비 시스템 확장 — 100종+ 장비, 4슬롯(무기/머리/몸통/장신구), 세트 보너스 5종, S급 패시브 효과</span></div>
+    <div class="ver-row"><span class="ver-tag">v1.1.71</span><span class="ver-desc">실효 전력 공식 개선 — morale 보정 추가, 케미 점수 세분화(±12%/±18%), 동종족 시너지(+5%/명)</span></div>
   </div>
 
   <h3>시스템별 구현 현황</h3>
@@ -1126,7 +1205,7 @@ condition < 50 → ×1.5</div>
         <li>유닛 카드 UI 통합 (Lv/XP/스프라이트/등급 글로우)</li>
         <li>입단 희망자 카드 리뉴얼 (미리보기 모달)</li>
         <li>룸별 활동 애니메이션 (gm-report / gm-training / gm-eating)</li>
-        <li>패시브 시스템 (16종 패시브 + 8쌍 시너지)</li>
+        <li>패시브 시스템 (21종 패시브 + 8쌍 시너지)</li>
         <li>등급 업 시스템 (10레벨마다, 레벨 캡 50)</li>
         <li>정기 원정 (사망 없는 6시간 경쟁, 수정·장비 보상)</li>
         <li>속성 상성 사이클 (effPowerVs 배율 적용)</li>
@@ -1271,7 +1350,7 @@ condition < 50 → ×1.5</div>
 
   <!-- Footer -->
   <div style="text-align:center;padding:20px 0;color:var(--text-faint);font-size:12px;">
-    4_GM · 아이언홀드 용병단 길드 기획서 · v1.1.68 · 2026-05-07<br>
+    4_GM · 아이언홀드 용병단 길드 기획서 · v1.1.71 · 2026-05-21<br>
     React 18 + TypeScript · Vite · Tailwind CSS · Electron
   </div>
 
