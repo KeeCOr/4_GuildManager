@@ -14,6 +14,7 @@ import { ExpeditionPanel, ExpeditionLaunchModal } from './components/ExpeditionP
 import { useMerchant } from './hooks/useMerchant'
 import { useDungeon } from './hooks/useDungeon'
 import { getSprite } from './assets/Character/sprites'
+import { UI_ICONS } from './assets/uiIcons'
 import bgBase from './assets/BG/BG_Base.jpg'
 import type { Mercenary, Quest, ActiveQuest, GuildBuildings, CampaignState, Equipment, EquipSlot, MerchantState, ActiveDungeon, ActiveExpedition, ExpeditionResult, SaveSlotData } from './types'
 
@@ -2064,15 +2065,17 @@ function App() {
         {/* 자원 스탯 그룹 — 우측 정렬 */}
         <div className="ml-auto flex items-center gap-1">
           {[
-            { icon: '📅', v: `Day ${state.day}`, c: 'text-cyan-300', bg: 'rgba(34,211,238,0.08)', border: 'rgba(34,211,238,0.15)' },
-            { icon: '💰', v: `${state.gold}G`, c: 'text-amber-300', bg: 'rgba(251,191,36,0.08)', border: 'rgba(251,191,36,0.18)' },
-            { icon: '⭐', v: `${state.fame}`, c: 'text-fuchsia-300', bg: 'rgba(217,70,239,0.08)', border: 'rgba(217,70,239,0.15)' },
-            { icon: '💎', v: `${state.crystals ?? 0}`, c: 'text-violet-300', bg: 'rgba(139,92,246,0.08)', border: 'rgba(139,92,246,0.25)' },
-            { icon: '👥', v: `${activeMercCount}/${maxHireCap(roomLevels['식당'] ?? 1)}`, c: activeMercCount >= maxHireCap(roomLevels['식당'] ?? 1) ? 'text-red-400' : 'text-slate-300', bg: 'rgba(255,255,255,0.04)', border: activeMercCount >= maxHireCap(roomLevels['식당'] ?? 1) ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.08)' },
-          ].map(({ icon, v, c, bg, border }) => (
-            <div key={icon} className="flex items-center gap-1 rounded-md px-1.5 py-1"
+            { id: 'day', iconSrc: UI_ICONS.timer, v: `Day ${state.day}`, c: 'text-cyan-300', bg: 'rgba(34,211,238,0.08)', border: 'rgba(34,211,238,0.15)' },
+            { id: 'gold', iconSrc: UI_ICONS.gold, v: `${state.gold}G`, c: 'text-amber-300', bg: 'rgba(251,191,36,0.08)', border: 'rgba(251,191,36,0.18)' },
+            { id: 'fame', iconSrc: UI_ICONS.fame, v: `${state.fame}`, c: 'text-fuchsia-300', bg: 'rgba(217,70,239,0.08)', border: 'rgba(217,70,239,0.15)' },
+            { id: 'crystal', iconSrc: UI_ICONS.crystal, v: `${state.crystals ?? 0}`, c: 'text-violet-300', bg: 'rgba(139,92,246,0.08)', border: 'rgba(139,92,246,0.25)' },
+            { id: 'mercs', icon: '👥', v: `${activeMercCount}/${maxHireCap(roomLevels['식당'] ?? 1)}`, c: activeMercCount >= maxHireCap(roomLevels['식당'] ?? 1) ? 'text-red-400' : 'text-slate-300', bg: 'rgba(255,255,255,0.04)', border: activeMercCount >= maxHireCap(roomLevels['식당'] ?? 1) ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.08)' },
+          ].map(({ id, icon, iconSrc, v, c, bg, border }) => (
+            <div key={id} className="flex items-center gap-1 rounded-md px-1.5 py-1"
               style={{ background: bg, border: `1px solid ${border}` }}>
-              <span className="text-sm leading-none">{icon}</span>
+              {iconSrc
+                ? <img src={iconSrc} alt="" className="h-4 w-4 object-contain" draggable={false} />
+                : <span className="text-sm leading-none">{icon}</span>}
               <span className={`text-xs font-bold ${c}`}>{v}</span>
             </div>
           ))}
