@@ -35,11 +35,11 @@ export function DungeonPanel({ dungeon, floorQuest, availableMercs, onDispatch, 
       onClick={onClose}
     >
       <div
-        className="rounded-2xl"
+        className="gm-modal-frame rounded-2xl"
         style={{ background: '#1e2030', border: '1px solid rgba(255,255,255,0.1)', maxWidth: 440, width: '95vw', padding: 20 }}
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center mb-3">
+        <div className="gm-panel-header flex justify-between items-center mb-6">
           <div>
             <h2 className="text-white font-bold text-lg">{dungeon.name}</h2>
             <div className="text-slate-400 text-sm">
@@ -66,7 +66,7 @@ export function DungeonPanel({ dungeon, floorQuest, availableMercs, onDispatch, 
         ) : (
           <>
             {/* Floor info */}
-            <div className="rounded-lg p-3 mb-4 space-y-1" style={{ background: 'rgba(255,255,255,0.05)' }}>
+            <div className="gm-slot-frame rounded-lg p-3 mb-4 space-y-1" style={{ background: 'rgba(255,255,255,0.05)' }}>
               <div className="text-white text-sm font-bold">현재 층: {floor}층</div>
               <div className="text-xs text-slate-400 flex gap-4 flex-wrap">
                 <span>난이도: {floorDiff}</span>

@@ -54,3 +54,74 @@ button {
   35%       { transform: translateY(-5px) scaleY(1.02); }
   65%       { transform: translateY(-2px) scaleY(1.01); }
 }
+
+.gm-modal-frame {
+  position: relative;
+  isolation: isolate;
+  background-image:
+    linear-gradient(180deg, rgba(24, 19, 36, 0.96), rgba(10, 8, 18, 0.98));
+  box-shadow:
+    0 20px 80px rgba(0, 0, 0, 0.45),
+    0 0 32px rgba(180, 120, 45, 0.14);
+}
+
+.gm-modal-frame::before {
+  content: "";
+  position: absolute;
+  inset: -10px;
+  z-index: -1;
+  pointer-events: none;
+  background: url("./assets/UI/chrome/modal-frame.png") center / 100% 100% no-repeat;
+  opacity: 0.82;
+}
+
+.gm-panel-header {
+  position: relative;
+}
+
+.gm-panel-header::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -16px;
+  width: min(72%, 320px);
+  height: 28px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  background: url("./assets/UI/chrome/panel-header.png") center / contain no-repeat;
+  opacity: 0.78;
+}
+
+.gm-button-primary {
+  position: relative;
+  overflow: hidden;
+  background-image:
+    url("./assets/UI/chrome/button-primary.png"),
+    linear-gradient(180deg, rgba(120, 76, 18, 0.38), rgba(56, 35, 12, 0.7));
+  background-size: 100% 100%, 100% 100%;
+  background-position: center;
+  box-shadow: inset 0 1px rgba(255, 232, 160, 0.18), 0 0 16px rgba(245, 158, 11, 0.08);
+}
+
+.gm-button-primary:disabled {
+  filter: grayscale(0.8);
+  opacity: 0.48;
+}
+
+.gm-slot-frame {
+  position: relative;
+  overflow: hidden;
+  background-image:
+    url("./assets/UI/chrome/slot-frame.png"),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.025));
+  background-size: 100% 100%, 100% 100%;
+  background-position: center;
+}
+
+.gm-toast-frame {
+  background-image:
+    url("./assets/UI/chrome/toast-frame.png"),
+    linear-gradient(180deg, rgba(80, 56, 28, 0.62), rgba(22, 16, 14, 0.82));
+  background-size: 100% 100%, 100% 100%;
+  background-position: center;
+}

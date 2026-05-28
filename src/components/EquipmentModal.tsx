@@ -31,11 +31,11 @@ export function EquipmentModal({ merc, guildInventory, onEquip, onClose }: Props
       onClick={onClose}
     >
       <div
-        className="rounded-2xl overflow-y-auto"
+        className="gm-modal-frame rounded-2xl overflow-y-auto"
         style={{ background: '#1e2030', border: '1px solid rgba(255,255,255,0.1)', maxWidth: 480, width: '95vw', maxHeight: '85vh', padding: 20 }}
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center mb-4">
+        <div className="gm-panel-header flex justify-between items-center mb-7">
           <h2 className="text-white font-bold text-lg">{merc.name} — 장비 관리</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-white text-xl">X</button>
         </div>
@@ -46,7 +46,7 @@ export function EquipmentModal({ merc, guildInventory, onEquip, onClose }: Props
             const itemId = merc.equipment[slot]
             const item = itemId ? findEquip(itemId) : null
             return (
-              <div key={slot} className="rounded-lg p-3" style={{ background: 'rgba(255,255,255,0.05)' }}>
+              <div key={slot} className="gm-slot-frame rounded-lg p-3" style={{ background: 'rgba(255,255,255,0.05)' }}>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400 text-sm">{SLOT_LABEL[slot]}</span>
                   {item ? (
@@ -106,7 +106,7 @@ export function EquipmentModal({ merc, guildInventory, onEquip, onClose }: Props
                       <button
                         key={item.id}
                         onClick={() => onEquip(merc.id, slot, item.id)}
-                        className="text-xs px-2 py-1 rounded transition-all"
+                        className="gm-button-primary text-xs px-2 py-1 rounded transition-all"
                         style={{
                           background: isEquipped ? 'rgba(139,92,246,0.4)' : 'rgba(255,255,255,0.06)',
                           border: `1px solid ${isEquipped ? 'rgba(139,92,246,0.6)' : 'rgba(255,255,255,0.1)'}`,

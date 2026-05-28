@@ -38,11 +38,11 @@ export function MerchantPanel({ merchant, gold, guildInventory, onBuy, onClose }
       onClick={onClose}
     >
       <div
-        className="rounded-2xl overflow-y-auto"
+        className="gm-modal-frame rounded-2xl overflow-y-auto"
         style={{ background: '#1e2030', border: '1px solid rgba(255,255,255,0.1)', maxWidth: 440, width: '95vw', maxHeight: '80vh', padding: 20 }}
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center mb-1">
+        <div className="gm-panel-header flex justify-between items-center mb-5">
           <h2 className="text-white font-bold text-lg">행상인</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-white text-xl">X</button>
         </div>
@@ -64,7 +64,7 @@ export function MerchantPanel({ merchant, gold, guildInventory, onBuy, onClose }
               const cost = Math.round(item.buyCost * 1.2)
               const canAfford = gold >= cost && !inventoryFull
               return (
-                <div key={item.id} className="rounded-lg p-3" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                <div key={item.id} className="gm-slot-frame rounded-lg p-3" style={{ background: 'rgba(255,255,255,0.05)' }}>
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
@@ -90,7 +90,7 @@ export function MerchantPanel({ merchant, gold, guildInventory, onBuy, onClose }
                       <button
                         onClick={() => onBuy(item)}
                         disabled={!canAfford}
-                        className="text-xs px-3 py-1 rounded font-bold transition-all"
+                        className="gm-button-primary text-xs px-3 py-1 rounded font-bold transition-all"
                         style={{
                           background: canAfford ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.05)',
                           border: `1px solid ${canAfford ? 'rgba(34,197,94,0.5)' : 'rgba(255,255,255,0.1)'}`,

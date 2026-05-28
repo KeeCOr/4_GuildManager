@@ -12,12 +12,19 @@
 | `src/assets/UI/timer.png` | 일차/남은 시간/원정 타이머 아이콘 | 상단 자원바 적용 |
 | `src/assets/UI/morale.png` | 사기/컨디션/회복 관련 아이콘 | 생성 완료, 후속 적용 후보 |
 | `src/assets/UI/danger.png` | 사망 위험/위험 경고/던전 경고 아이콘 | 생성 완료, 후속 적용 후보 |
+| `src/assets/UI/chrome/modal-frame.png` | 팝업 외곽 프레임 | 상인/장비/던전/원정 팝업 적용 |
+| `src/assets/UI/chrome/panel-header.png` | 팝업 헤더 장식 | 상인/장비/던전/원정 팝업 적용 |
+| `src/assets/UI/chrome/button-primary.png` | 주요 버튼 장식/광원 | 구매/보상/원정/장비 버튼 적용 |
+| `src/assets/UI/chrome/slot-frame.png` | 슬롯/아이템 카드 프레임 | 장비 슬롯, 상인 상품, 던전 정보, 원정 목록 적용 |
+| `src/assets/UI/chrome/toast-frame.png` | 알림/토스트 프레임 | 생성 완료, 후속 적용 후보 |
 
 ## 코드 연결
 
 - `src/assets/uiIcons.ts`에서 UI 아이콘을 한 번에 export
 - `src/App.tsx` 상단 자원바의 Day, 금화, 명성, 수정 표기를 이미지 아이콘으로 교체
 - 최종 아이콘은 256x256 투명 PNG로 경량화
+- `src/index.css`에 `gm-modal-frame`, `gm-panel-header`, `gm-button-primary`, `gm-slot-frame`, `gm-toast-frame` 공통 클래스를 추가
+- `MerchantPanel`, `EquipmentModal`, `DungeonPanel`, `ExpeditionPanel`에 chrome 리소스 적용
 
 ## 다음 적용 후보
 

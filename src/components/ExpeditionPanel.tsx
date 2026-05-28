@@ -46,10 +46,10 @@ export function ExpeditionPanel({ expedition, mercs, onClose, onClaim }: Props) 
       style={{ background: 'rgba(0,0,0,0.75)' }}
       onClick={e => e.target === e.currentTarget && onClose()}
     >
-      <div className="rounded-2xl overflow-hidden w-[480px] max-h-[90vh] overflow-y-auto"
+      <div className="gm-modal-frame rounded-2xl overflow-hidden w-[480px] max-h-[90vh] overflow-y-auto"
         style={{ background: '#0c0b1a', border: '1px solid rgba(139,92,246,0.3)', boxShadow: '0 0 40px rgba(139,92,246,0.15)' }}>
         {/* Header */}
-        <div className="px-6 py-4" style={{ background: 'linear-gradient(135deg, rgba(88,28,135,0.4), rgba(30,27,75,0.8))' }}>
+        <div className="gm-panel-header px-6 py-4" style={{ background: 'linear-gradient(135deg, rgba(88,28,135,0.4), rgba(30,27,75,0.8))' }}>
           <div className="flex justify-between items-center">
             <div>
               <h2 className="text-lg font-bold text-white">⚔ 정기 원정</h2>
@@ -78,7 +78,7 @@ export function ExpeditionPanel({ expedition, mercs, onClose, onClaim }: Props) 
             <p className="text-xs font-bold mb-2" style={{ color: 'rgba(180,160,220,0.7)' }}>파견 용병</p>
             <div className="space-y-1.5">
               {assigned.map(m => (
-                <div key={m.id} className="flex justify-between items-center px-3 py-1.5 rounded-lg"
+                <div key={m.id} className="gm-slot-frame flex justify-between items-center px-3 py-1.5 rounded-lg"
                   style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold" style={{ color: GRADE_COLOR[m.grade] }}>{m.grade}</span>
@@ -135,7 +135,7 @@ export function ExpeditionPanel({ expedition, mercs, onClose, onClaim }: Props) 
                 </div>
               )}
               <button onClick={onClaim}
-                className="mt-4 w-full py-2 rounded-lg font-bold text-sm transition"
+                className="gm-button-primary mt-4 w-full py-2 rounded-lg font-bold text-sm transition"
                 style={{ background: 'rgba(245,158,11,0.2)', color: '#fbbf24', border: '1px solid rgba(245,158,11,0.4)' }}>
                 보상 수령
               </button>
@@ -162,9 +162,9 @@ export function ExpeditionLaunchModal({ mercs, onLaunch, onClose }: LaunchProps)
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.75)' }}
       onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="rounded-2xl w-[440px] overflow-hidden"
+      <div className="gm-modal-frame rounded-2xl w-[440px] overflow-hidden"
         style={{ background: '#0c0b1a', border: '1px solid rgba(139,92,246,0.3)', boxShadow: '0 0 30px rgba(139,92,246,0.12)' }}>
-        <div className="px-5 py-4 flex justify-between items-center" style={{ borderBottom: '1px solid rgba(139,92,246,0.15)' }}>
+        <div className="gm-panel-header px-5 py-4 flex justify-between items-center" style={{ borderBottom: '1px solid rgba(139,92,246,0.15)' }}>
           <div>
             <h2 className="text-base font-bold text-white">⚔ 정기 원정 출발</h2>
             <p className="text-xs mt-0.5" style={{ color: 'rgba(160,140,200,0.6)' }}>사망 위험 없음 · 6시간 · 이후 12시간 쿨다운</p>
@@ -179,7 +179,7 @@ export function ExpeditionLaunchModal({ mercs, onLaunch, onClose }: LaunchProps)
               return (
                 <div key={m.id}
                   onClick={() => toggle(m.id)}
-                  className="flex justify-between items-center px-3 py-2 rounded-lg cursor-pointer transition-all"
+                  className="gm-slot-frame flex justify-between items-center px-3 py-2 rounded-lg cursor-pointer transition-all"
                   style={{
                     background: sel ? 'rgba(139,92,246,0.15)' : 'rgba(255,255,255,0.03)',
                     border: `1px solid ${sel ? 'rgba(139,92,246,0.4)' : 'rgba(255,255,255,0.07)'}`,
@@ -204,7 +204,7 @@ export function ExpeditionLaunchModal({ mercs, onLaunch, onClose }: LaunchProps)
           <button
             onClick={() => selected.length > 0 && onLaunch(selected)}
             disabled={selected.length === 0}
-            className="w-full py-2 rounded-lg font-bold text-sm transition"
+            className="gm-button-primary w-full py-2 rounded-lg font-bold text-sm transition"
             style={{
               background: selected.length > 0 ? 'rgba(139,92,246,0.25)' : 'rgba(80,80,90,0.2)',
               color: selected.length > 0 ? '#c4b5fd' : 'rgba(130,130,150,0.5)',
