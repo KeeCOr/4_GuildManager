@@ -16,13 +16,14 @@ import { useDungeon } from './hooks/useDungeon'
 import { getSprite } from './assets/Character/sprites'
 import { UI_ICONS } from './assets/uiIcons'
 import bgBase from './assets/BG/BG_Base.jpg'
-import type { Mercenary, Quest, ActiveQuest, GuildBuildings, CampaignState, Equipment, EquipSlot, MerchantState, ActiveDungeon, ActiveExpedition, ExpeditionResult, SaveSlotData } from './types'
+import type { Mercenary, Quest, ActiveQuest, GuildBuildings, CampaignState, Equipment, EquipSlot, MerchantState, ActiveDungeon, ActiveExpedition, ExpeditionResult, SaveSlotData, RoomId } from './types'
 
 // ── Display helpers ────────────────────────────────────────────────────────
 
 const RACE_ICONS: Record<string, string> = { 엘프: '🧝', 인간: '⚜️', 드워프: '⛏️', 수인: '🐺' }
 const CLASS_ICONS: Record<string, string> = { 전사: '⚔️', 궁수: '🏹', 도적: '🗡️', 마법사: '🪄', 성직자: '🕊️' }
 const GRADE_STARS: Record<string, string> = { S: '★★★★★', A: '★★★★', B: '★★★', C: '★★', D: '★' }
+const ROOM_NAMES: RoomId[] = ['길드마스터룸', '훈련소', '식당']
 
 // 속성 아이콘·색상
 const ELEMENT_ICON: Record<string, string> = { 불: '🔥', 얼음: '🧊', 자연: '🌿', 암흑: '🌑', 빛: '✨' }
@@ -266,7 +267,7 @@ const ROOM_UPGRADE_COSTS: Record<string, readonly [number, number]> = {
 const ROOM_EFFECTS: Record<string, { desc: string[]; icon: string }> = {
   '길드마스터룸': { icon: '👑', desc: ['호감도+1/일', '호감도+2/일', '호감도+3/일'] },
   '훈련소':       { icon: '⚔️', desc: ['XP+1/일', 'XP+3/일', 'XP+6/일'] },
-  '식당':         { icon: '🍖', desc: ['기본', '도착+1명', '도착+2명'] },
+  '식당':         { icon: '🍖', desc: ['음식 판매', '판매+도착+1명', '판매+도착+2명'] },
 }
 
 // Room-level derived helpers
@@ -275,8 +276,17 @@ const trainingXPPerDay  = (lv: number) => [1, 3, 6][Math.min(lv - 1, 2)]
 const masterCapacity    = (lv: number) => [1, 2, 3][Math.min(lv - 1, 2)]
 const masterFavBonus    = (lv: number) => [1, 2, 3][Math.min(lv - 1, 2)]
 const maxHireCap        = (lv: number) => [6, 9, 12][Math.min(lv - 1, 2)]
+const diningSalesCapacity = (lv: number) => [2, 3, 4][Math.min(lv - 1, 2)]
 const diningArrivalBonus = (lv: number) => [0, 1, 2][Math.min(lv - 1, 2)]
 const diningTavernBonus  = (lv: number) => [0, 1, 2][Math.min(lv - 1, 2)]
+const calcDiningSalesIncome = (lv: number, staff: Mercenary[], morale: number) => {
+  const activeStaff = staff.slice(0, diningSalesCapacity(lv))
+  if (activeStaff.length === 0) return 0
+  const base = [25, 55, 95][Math.min(lv - 1, 2)]
+  const staffBonus = activeStaff.reduce((sum, m) => sum + Math.round(10 + effPower(m) * 0.08), 0)
+  const moraleRate = 0.7 + Math.max(0, Math.min(100, morale)) / 220
+  return Math.max(0, Math.round((base + staffBonus) * moraleRate))
+}
 
 // Building effects
 
@@ -638,6 +648,8 @@ function App() {
   const [activeHint, setActiveHint] = useState<typeof HINT_STEPS[0] | null>(null)
   const shownHintsRef = useRef<Set<string>>(loadShownHints())
   const [draggingMercId, setDraggingMercId] = useState<string | null>(null)
+  const [selectedRoomId, setSelectedRoomId] = useState<RoomId | null>('식당')
+  const [dropTargetRoom, setDropTargetRoom] = useState<RoomId | null>(null)
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [showQuestModal, setShowQuestModal] = useState(false)
   const [showMercModal, setShowMercModal] = useState(false)
@@ -746,6 +758,43 @@ function App() {
   const activeMercCount = useMemo(
     () => mercs.filter(m => m.status !== '영혼').length,
     [mercs]
+  )
+  const roomOperations = useMemo(() => {
+    const diningLv = roomLevels['식당'] ?? 1
+    return ROOM_NAMES.map(room => {
+      const roomLv = roomLevels[room] ?? 1
+      const occupants = mercs.filter(m => m.room === room && m.status === '대기중' && !pendingMercIds.has(m.id))
+      const cap = room === '길드마스터룸'
+        ? masterCapacity(roomLv)
+        : room === '훈련소'
+        ? trainingCapacity(roomLv)
+        : maxHireCap(diningLv)
+      const nextCost = ROOM_UPGRADE_COSTS[room]?.[roomLv - 1] ?? 0
+      const canUpgrade = room === '길드마스터룸'
+        ? roomLv < 3 && roomLv < masterRoomMaxLevel(state.fame)
+        : roomLv < 3 && roomLv < (roomLevels['길드마스터룸'] ?? 1)
+      const blocked = room === '길드마스터룸'
+        ? roomLv >= masterRoomMaxLevel(state.fame) && roomLv < 3
+        : roomLv >= (roomLevels['길드마스터룸'] ?? 1) && roomLv < 3
+      const status = occupants.length === 0
+        ? '비어 있음'
+        : occupants.length >= cap
+        ? '가득 참'
+        : '운영 중'
+      const action = room === '길드마스터룸'
+        ? `배치 효과: ${ROOM_EFFECTS[room].desc[roomLv - 1]}`
+        : room === '훈련소'
+        ? `오늘 훈련 가능: ${Math.min(occupants.length, cap)}/${cap}명`
+        : `음식 판매 예상: +${calcDiningSalesIncome(roomLv, occupants, state.morale)}G/일`
+      const subAction = room === '식당'
+        ? `판매 담당 ${Math.min(occupants.length, diningSalesCapacity(roomLv))}/${diningSalesCapacity(roomLv)}명 · 고용 한도 ${activeMercCount}/${cap}명`
+        : ''
+      return { room, roomLv, occupants, cap, nextCost, canUpgrade, blocked, status, action, subAction }
+    })
+  }, [activeMercCount, mercs, pendingMercIds, roomLevels, state.fame, state.morale])
+  const selectedRoomOperation = useMemo(
+    () => roomOperations.find(r => r.room === selectedRoomId) ?? null,
+    [roomOperations, selectedRoomId]
   )
   // ── Game logic ───────────────────────────────────
 
@@ -1331,6 +1380,8 @@ function App() {
 
   const updateMercRoom = (mercId: string, room: Mercenary['room']) => {
     setMercs(prev => prev.map(m => m.id === mercId ? { ...m, room } : m))
+    setSelectedRoomId(room)
+    setDropTargetRoom(null)
   }
 
   const upgradeBuilding = (id: keyof GuildBuildings) => {
@@ -1426,6 +1477,17 @@ function App() {
       if (masterMercIds.has(m.id)) upd.favorability = Math.min(100, m.favorability + masterFav)
       return Object.keys(upd).length > 0 ? { ...m, ...upd } : m
     })
+
+    // ── 3a. 식당 음식 판매 수익 ─────────────────────────────────────────
+    const diningLv = roomLevels['식당'] ?? 1
+    const diningStaff = nextMercs
+      .filter(m => m.status === '대기중' && m.room === '식당')
+      .slice(0, diningSalesCapacity(diningLv))
+    const diningIncome = calcDiningSalesIncome(diningLv, diningStaff, morale)
+    if (diningIncome > 0) {
+      g += diningIncome
+      logs.push(`🍖 식당 음식 판매 수익 +${diningIncome}G (${diningStaff.length}/${diningSalesCapacity(diningLv)}명 판매 담당)`)
+    }
 
     // ── 3b. 나이 증가 (30일마다) ─────────────────────────────────────────
     if (nextDay % 30 === 0) {
@@ -2246,6 +2308,52 @@ function App() {
               ⚔ 길드 홀 Lv{buildings.hall}
             </span>
           </div>
+          {selectedRoomOperation && (
+            <div className="absolute z-30 rounded-xl p-3 w-72"
+              style={{ left: -300, top: 64, background: 'rgba(8,10,18,0.88)', border: '1px solid rgba(230,190,110,0.34)', boxShadow: '0 14px 44px rgba(0,0,0,0.42)', backdropFilter: 'blur(10px)' }}>
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-xs font-bold tracking-widest uppercase" style={{ color: 'rgba(220,170,90,0.7)' }}>Room Control</p>
+                  <h3 className="text-base font-extrabold text-white mt-0.5">
+                    {ROOM_EFFECTS[selectedRoomOperation.room].icon} {selectedRoomOperation.room}
+                    <span className="text-xs ml-1.5 text-slate-400">Lv{selectedRoomOperation.roomLv}</span>
+                  </h3>
+                </div>
+                <button onClick={() => setSelectedRoomId(null)} className="text-slate-500 hover:text-white text-lg leading-none px-1">×</button>
+              </div>
+              <div className="grid grid-cols-3 gap-1.5 mt-3">
+                <div className="rounded-lg px-2 py-1.5" style={{ background: 'rgba(255,255,255,0.045)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                  <p className="text-[10px] text-slate-500">인원</p>
+                  <p className="text-sm font-bold text-white">{selectedRoomOperation.occupants.length}/{selectedRoomOperation.cap}</p>
+                </div>
+                <div className="rounded-lg px-2 py-1.5" style={{ background: 'rgba(255,255,255,0.045)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                  <p className="text-[10px] text-slate-500">상태</p>
+                  <p className={selectedRoomOperation.occupants.length === 0 ? 'text-sm font-bold text-slate-400' : selectedRoomOperation.occupants.length >= selectedRoomOperation.cap ? 'text-sm font-bold text-amber-300' : 'text-sm font-bold text-emerald-300'}>{selectedRoomOperation.status}</p>
+                </div>
+                <div className="rounded-lg px-2 py-1.5" style={{ background: 'rgba(255,255,255,0.045)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                  <p className="text-[10px] text-slate-500">효과</p>
+                  <p className="text-sm font-bold text-cyan-200">{ROOM_EFFECTS[selectedRoomOperation.room].desc[selectedRoomOperation.roomLv - 1]}</p>
+                </div>
+              </div>
+              <p className="text-xs mt-3" style={{ color: 'rgba(200,210,220,0.76)' }}>{selectedRoomOperation.action}</p>
+              {selectedRoomOperation.subAction && (
+                <p className="text-xs mt-1" style={{ color: 'rgba(148,163,184,0.72)' }}>{selectedRoomOperation.subAction}</p>
+              )}
+              <div className="flex items-center gap-2 mt-3">
+                {selectedRoomOperation.nextCost > 0 && (
+                  <button
+                    disabled={!selectedRoomOperation.canUpgrade || state.gold < selectedRoomOperation.nextCost}
+                    onClick={() => upgradeRoom(selectedRoomOperation.room)}
+                    className="gm-button-primary rounded-lg px-3 py-1.5 text-xs font-extrabold text-white disabled:cursor-not-allowed">
+                    업그레이드 {selectedRoomOperation.nextCost}G
+                  </button>
+                )}
+                <span className="text-xs" style={{ color: selectedRoomOperation.blocked ? 'rgba(251,191,36,0.82)' : 'rgba(148,163,184,0.72)' }}>
+                  {selectedRoomOperation.blocked ? '상위 조건 필요' : draggingMercId ? '방 위에 놓으면 배치' : '용병을 드래그해 배치'}
+                </span>
+              </div>
+            </div>
+          )}
           {/* 3층 패널 컨테이너 — 드래그 핸들로 위치/크기 조정 가능 */}
           <div className="absolute flex flex-col" style={{ top: `${roomInsets.top}%`, left: `${roomInsets.left}%`, right: `${roomInsets.right}%`, bottom: `${roomInsets.bottom}%`, gap: '0.8%' }}>
             {/* 상단 핸들 */}
@@ -2276,10 +2384,13 @@ function App() {
               const upgCost = canUpgrade && costs ? costs[roomLv - 1] : 0
               const souls = mercs.filter(m => m.status === '영혼')
               return (
-                <div className="flex-1 min-h-0 rounded-xl overflow-hidden flex flex-col"
+                <div className={`gm-room-surface flex-1 min-h-0 rounded-xl overflow-hidden flex flex-col ${selectedRoomId === room ? 'gm-room-selected' : ''} ${dropTargetRoom === room ? 'gm-room-drop-target' : ''}`}
                   style={{ background: 'rgba(10,6,25,0.32)', border: '1px solid rgba(160,110,255,0.35)', boxShadow: '0 2px 12px rgba(80,40,160,0.1)' }}
+                  onClick={() => setSelectedRoomId(room)}
                   onDragOver={e => e.preventDefault()}
-                  onDrop={e => { e.preventDefault(); const mid = e.dataTransfer.getData('roomMercId'); if (mid) updateMercRoom(mid, room) }}>
+                  onDragEnter={() => draggingMercId && setDropTargetRoom(room)}
+                  onDragLeave={() => setDropTargetRoom(prev => prev === room ? null : prev)}
+                  onDrop={e => { e.preventDefault(); const mid = e.dataTransfer.getData('roomMercId') || e.dataTransfer.getData('mercId'); if (mid) updateMercRoom(mid, room) }}>
                   <div className="flex items-center justify-between px-2 py-1 flex-shrink-0"
                     style={{ background: 'rgba(18,8,42,0.72)', borderBottom: '1px solid rgba(140,90,230,0.25)' }}>
                     <span className="text-xs font-bold" style={{ color: 'rgba(200,170,255,0.95)' }}>
@@ -2294,6 +2405,7 @@ function App() {
                           ↑{upgCost}G
                         </button>
                       )}
+                      <span className="gm-room-badge">{occupants.length}/{cap}</span>
                     </div>
                   </div>
                   <div className="flex-1 overflow-y-auto min-h-0">
@@ -2312,7 +2424,7 @@ function App() {
                         return (
                           <div key={m.id} draggable
                             onDragStart={e => { e.dataTransfer.setData('roomMercId', m.id); e.dataTransfer.setData('mercId', m.id); setDraggingMercId(m.id); setSelectedMercId(m.id) }}
-                            onDragEnd={() => setDraggingMercId(null)}
+                            onDragEnd={() => { setDraggingMercId(null); setDropTargetRoom(null) }}
                             onClick={() => { setSelectedMercId(isSel ? null : m.id); setRoomMercPreview(m) }}
                             role="button" tabIndex={0}
                             className="flex flex-col items-center transition-all select-none"
@@ -2388,10 +2500,13 @@ function App() {
               const canUpgrade = roomLv < 3 && roomLv < (roomLevels['길드마스터룸'] ?? 1)
               const upgCost = canUpgrade && costs ? costs[roomLv - 1] : 0
               return (
-                <div className="flex-1 min-h-0 rounded-xl overflow-hidden flex flex-col"
+                <div className={`gm-room-surface flex-1 min-h-0 rounded-xl overflow-hidden flex flex-col ${selectedRoomId === room ? 'gm-room-selected' : ''} ${dropTargetRoom === room ? 'gm-room-drop-target' : ''}`}
                   style={{ background: 'rgba(22,8,4,0.32)', border: '1px solid rgba(220,100,50,0.35)', boxShadow: '0 2px 12px rgba(180,60,20,0.08)' }}
+                  onClick={() => setSelectedRoomId(room)}
                   onDragOver={e => e.preventDefault()}
-                  onDrop={e => { e.preventDefault(); const mid = e.dataTransfer.getData('roomMercId'); if (mid) updateMercRoom(mid, room) }}>
+                  onDragEnter={() => draggingMercId && setDropTargetRoom(room)}
+                  onDragLeave={() => setDropTargetRoom(prev => prev === room ? null : prev)}
+                  onDrop={e => { e.preventDefault(); const mid = e.dataTransfer.getData('roomMercId') || e.dataTransfer.getData('mercId'); if (mid) updateMercRoom(mid, room) }}>
                   <div className="flex items-center justify-between px-2 py-1 flex-shrink-0"
                     style={{ background: 'rgba(38,10,4,0.72)', borderBottom: '1px solid rgba(200,90,40,0.25)' }}>
                     <span className="text-xs font-bold" style={{ color: 'rgba(255,155,90,0.95)' }}>
@@ -2406,6 +2521,7 @@ function App() {
                           ↑{upgCost}G
                         </button>
                       )}
+                      <span className="gm-room-badge">{occupants.length}/{cap}</span>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2 p-2 items-end content-start overflow-y-auto flex-1 min-h-0">
@@ -2423,7 +2539,7 @@ function App() {
                       return (
                         <div key={m.id} draggable
                           onDragStart={e => { e.dataTransfer.setData('roomMercId', m.id); e.dataTransfer.setData('mercId', m.id); setDraggingMercId(m.id); setSelectedMercId(m.id) }}
-                          onDragEnd={() => setDraggingMercId(null)}
+                          onDragEnd={() => { setDraggingMercId(null); setDropTargetRoom(null) }}
                           onClick={() => { setSelectedMercId(isSel ? null : m.id); setRoomMercPreview(m) }}
                           role="button" tabIndex={0}
                           className="flex flex-col items-center transition-all select-none"
@@ -2463,10 +2579,13 @@ function App() {
               const canUpgrade = roomLv < 3 && roomLv < (roomLevels['길드마스터룸'] ?? 1)
               const upgCost = canUpgrade && costs ? costs[roomLv - 1] : 0
               return (
-                <div className="flex-1 min-h-0 rounded-xl overflow-hidden flex flex-col"
+                <div className={`gm-room-surface flex-1 min-h-0 rounded-xl overflow-hidden flex flex-col ${selectedRoomId === room ? 'gm-room-selected' : ''} ${dropTargetRoom === room ? 'gm-room-drop-target' : ''}`}
                   style={{ background: 'rgba(4,16,8,0.32)', border: '1px solid rgba(60,200,100,0.35)', boxShadow: '0 2px 12px rgba(20,140,60,0.08)' }}
+                  onClick={() => setSelectedRoomId(room)}
                   onDragOver={e => e.preventDefault()}
-                  onDrop={e => { e.preventDefault(); const mid = e.dataTransfer.getData('roomMercId'); if (mid) updateMercRoom(mid, room) }}>
+                  onDragEnter={() => draggingMercId && setDropTargetRoom(room)}
+                  onDragLeave={() => setDropTargetRoom(prev => prev === room ? null : prev)}
+                  onDrop={e => { e.preventDefault(); const mid = e.dataTransfer.getData('roomMercId') || e.dataTransfer.getData('mercId'); if (mid) updateMercRoom(mid, room) }}>
                   <div className="flex items-center justify-between px-2 py-1 flex-shrink-0"
                     style={{ background: 'rgba(4,25,10,0.72)', borderBottom: '1px solid rgba(50,180,80,0.25)' }}>
                     <span className="text-xs font-bold" style={{ color: 'rgba(80,230,125,0.95)' }}>
@@ -2481,6 +2600,7 @@ function App() {
                           ↑{upgCost}G
                         </button>
                       )}
+                      <span className="gm-room-badge">{occupants.length}/{maxHireCap(roomLevels['식당'] ?? 1)}</span>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2 p-2 items-end content-start overflow-y-auto flex-1 min-h-0">
@@ -2498,7 +2618,7 @@ function App() {
                       return (
                         <div key={m.id} draggable
                           onDragStart={e => { e.dataTransfer.setData('roomMercId', m.id); e.dataTransfer.setData('mercId', m.id); setDraggingMercId(m.id); setSelectedMercId(m.id) }}
-                          onDragEnd={() => setDraggingMercId(null)}
+                          onDragEnd={() => { setDraggingMercId(null); setDropTargetRoom(null) }}
                           onClick={() => { setSelectedMercId(isSel ? null : m.id); setRoomMercPreview(m) }}
                           role="button" tabIndex={0}
                           className="flex flex-col items-center transition-all select-none"
@@ -2589,7 +2709,7 @@ function App() {
                             return (
                               <div key={m.id} draggable
                                 onDragStart={e => { e.dataTransfer.setData('roomMercId', m.id); e.dataTransfer.setData('mercId', m.id); setDraggingMercId(m.id); setSelectedMercId(m.id) }}
-                                onDragEnd={() => setDraggingMercId(null)}
+                                onDragEnd={() => { setDraggingMercId(null); setDropTargetRoom(null) }}
                                 onClick={() => { setSelectedMercId(isSel ? null : m.id); setRoomMercPreview(m) }}
                                 role="button" tabIndex={0}
                                 className="flex flex-col items-center gap-0.5 rounded-lg px-2 py-2 transition-all select-none"
@@ -2714,7 +2834,7 @@ function App() {
                         return (
                           <div key={m.id} draggable
                             onDragStart={e => { e.dataTransfer.setData('roomMercId', m.id); e.dataTransfer.setData('mercId', m.id); setDraggingMercId(m.id); setSelectedMercId(m.id) }}
-                            onDragEnd={() => setDraggingMercId(null)}
+                            onDragEnd={() => { setDraggingMercId(null); setDropTargetRoom(null) }}
                             onClick={() => { setSelectedMercId(isSel ? null : m.id); setRoomMercPreview(m) }}
                             role="button" tabIndex={0}
                             className="flex flex-col items-center gap-0.5 rounded-lg px-2 py-2 transition-all select-none"
@@ -3446,8 +3566,8 @@ function App() {
                       showDetail
                       isDraggable={canDrag}
                       isDragging={draggingMercId === m.id}
-                      onDragStart={e => { e.dataTransfer.setData('mercId', m.id); setDraggingMercId(m.id); setSelectedMercId(m.id) }}
-                      onDragEnd={() => setDraggingMercId(null)}
+                      onDragStart={e => { e.dataTransfer.setData('mercId', m.id); e.dataTransfer.setData('roomMercId', m.id); setDraggingMercId(m.id); setSelectedMercId(m.id) }}
+                      onDragEnd={() => { setDraggingMercId(null); setDropTargetRoom(null) }}
                       onEquipClick={() => setShowEquipModal(m.id)}
                     />
                   )
