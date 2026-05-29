@@ -127,10 +127,15 @@ function allocateStats(total: number, cls: Mercenary['class']) {
   return { 공격력: vals[0], 함정해제: vals[1], 생존율: vals[2] }
 }
 
-export function generateMercenary(tavernLevel = 0, premium = false): Mercenary {
+export interface MercenaryGenerationOptions {
+  level?: number
+}
+
+export function generateMercenary(tavernLevel = 0, premium = false, options: MercenaryGenerationOptions = {}): Mercenary {
   const race = RACE_LIST[Math.floor(Math.random() * RACE_LIST.length)]
   const cls = CLASS_LIST[Math.floor(Math.random() * CLASS_LIST.length)]
   const grade = pickGrade(tavernLevel, premium)
+  const level = Math.max(1, Math.min(50, Math.round(options.level ?? 1)))
   const statTotal = GRADE_STAT_TOTALS[grade]
   const raceMod = RACE_MODS[race]
   const cooperation = Math.max(30, Math.min(88, Math.round(raceMod.cooperation + (Math.random() * 14 - 7))))
@@ -147,24 +152,33 @@ export function generateMercenary(tavernLevel = 0, premium = false): Mercenary {
     ['D','C','B','A','S'].indexOf(grade) * 12 +
     (cls === '마법사' ? 4 : 0)
   ))
+  const levelBonus = level - 1
+  const scaledStats = {
+    공격력: stats.공격력 + Math.round(levelBonus * 2),
+    함정해제: stats.함정해제 + Math.round(levelBonus * 2),
+    생존율: stats.생존율 + Math.round(levelBonus * 2),
+    협조성: stats.협조성 + Math.round(levelBonus * 0.5),
+  }
+  const scaledTrap = (cls === '궁수' || cls === '도적') ? Math.round(scaledStats.함정해제 * (cls === '도적' ? 1.1 : 1)) : 0
+  const scaledPower = Math.max(20, power + Math.round(levelBonus * 4))
   const gradeIdx = ['D','C','B','A','S'].indexOf(grade)
   const rawCost = Math.round(
-    (power * 1.2 + gradeIdx * 15 + cooperation * 0.5)
+    (scaledPower * 1.2 + gradeIdx * 15 + cooperation * 0.5 + levelBonus * 8)
     * raceMod.cost
   )
   const GRADE_HIRE_MULT = [0, 0.15, 1.5, 3.0, 6.0]
   const cost = gradeIdx === 0 ? 0
     : gradeIdx === 1 ? Math.min(30, Math.max(0, Math.round(rawCost * GRADE_HIRE_MULT[1])))
     : Math.round(rawCost * GRADE_HIRE_MULT[gradeIdx])
-  const dailyWage = Math.max(12, Math.round(cost * 0.07 + ['D','C','B','A','S'].indexOf(grade) * 5))
+  const dailyWage = Math.max(12, Math.round(cost * 0.07 + ['D','C','B','A','S'].indexOf(grade) * 5 + levelBonus * 2))
 
   return {
     id: `m-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
     name: randomName(),
     age: Math.floor(Math.random() * 28) + 18,
-    race, class: cls, grade, power,
+    race, class: cls, grade, power: scaledPower,
     element: pickElement(cls),
-    trap_disarm: (cls === '궁수' || cls === '도적') ? Math.round(combat.함정해제 * (cls === '도적' ? 1.1 : 1)) : 0,
+    trap_disarm: scaledTrap,
     condition: 100, hp: Math.max(50, 100 + raceMod.hpBonus), cost, deathCost: DEATH_COSTS[grade],
     traits: {
       cooperation,
@@ -172,11 +186,11 @@ export function generateMercenary(tavernLevel = 0, premium = false): Mercenary {
       gender: Math.random() < 0.5 ? '남' : '여',
       synergy_factor: Number((1 + raceMod.synergy * 0.01 + (Math.random() - 0.5) * 0.08).toFixed(2))
     },
-    stats, dailyWage,
+    stats: scaledStats, dailyWage,
     favorability: 50,
     morale: 70,
     status: '대기중', room: '식당',
-    level: 1, experience: 0, expToNext: EXP_TO_NEXT(1),
+    level, experience: 0, expToNext: EXP_TO_NEXT(level),
     equipment: { weapon: null, head: null, body: null, accessory: null },
     startingGrade: grade,
     passives: (() => {

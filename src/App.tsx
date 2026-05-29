@@ -16,6 +16,7 @@ import { useDungeon } from './hooks/useDungeon'
 import { getSprite } from './assets/Character/sprites'
 import { UI_ICONS } from './assets/uiIcons'
 import bgBase from './assets/BG/BG_Base.jpg'
+import sceneFrontProps from './assets/BG/props/front/scene-front-props.png'
 import type { Mercenary, Quest, ActiveQuest, GuildBuildings, CampaignState, Equipment, EquipSlot, MerchantState, ActiveDungeon, ActiveExpedition, ExpeditionResult, SaveSlotData, RoomId } from './types'
 
 // ── Display helpers ────────────────────────────────────────────────────────
@@ -24,6 +25,13 @@ const RACE_ICONS: Record<string, string> = { 엘프: '🧝', 인간: '⚜️', �
 const CLASS_ICONS: Record<string, string> = { 전사: '⚔️', 궁수: '🏹', 도적: '🗡️', 마법사: '🪄', 성직자: '🕊️' }
 const GRADE_STARS: Record<string, string> = { S: '★★★★★', A: '★★★★', B: '★★★', C: '★★', D: '★' }
 const ROOM_NAMES: RoomId[] = ['길드마스터룸', '훈련소', '식당']
+type SceneFocusId = RoomId | '외부'
+const SCENE_FOCUS: Record<SceneFocusId, { label: string; scale: number; origin: string }> = {
+  '길드마스터룸': { label: '길드마스터룸', scale: 1.72, origin: '72% 27%' },
+  '훈련소': { label: '훈련소', scale: 1.72, origin: '72% 55%' },
+  '식당': { label: '식당', scale: 1.72, origin: '73% 82%' },
+  '외부': { label: '외부 진입로', scale: 1.55, origin: '22% 74%' },
+}
 
 // 속성 아이콘·색상
 const ELEMENT_ICON: Record<string, string> = { 불: '🔥', 얼음: '🧊', 자연: '🌿', 암흑: '🌑', 빛: '✨' }
@@ -200,7 +208,7 @@ const BUILDING_INFO = {
   hall:      { name: '길드 홀',  icon: '🏰', maxLevel: 4, buildCost: 0,
                desc: (lv: number) => `동시 계약 ${[2,3,4,5][Math.min(lv-1,3)]}개` },
   barracks:  { name: '병영',     icon: '⛺', maxLevel: 4, buildCost: 300,
-               desc: (lv: number) => `${[3,3,2,2][lv-1]}일마다 ${[1,2,3,4][lv-1]}명 도착` },
+               desc: (lv: number) => `${[3,3,2,2][lv-1]}일마다 ${[1,2,3,4][lv-1]}명 도착 · 신병 Lv${arrivalRecruitLevel(lv)}` },
   training:  { name: '훈련소',   icon: '⚔️', maxLevel: 4, buildCost: 400,
                desc: (lv: number) => `경험치 +${[0,30,70,120][lv-1]}%` },
   tavern:    { name: '선술집',   icon: '🍺', maxLevel: 4, buildCost: 600,
@@ -291,6 +299,17 @@ const calcDiningSalesIncome = (lv: number, staff: Mercenary[], morale: number) =
 // Building effects
 
 const arrivalCount    = (barracksLv: number) => [3, 4, 5, 6][barracksLv - 1] ?? 3
+const arrivalRecruitLevel = (barracksLv: number) => [1, 2, 3, 4][Math.min(Math.max(barracksLv - 1, 0), 3)]
+const recruitTrainingLevelBonus = (trainingLv: number) => trainingLv >= 4 ? 2 : trainingLv >= 3 ? 1 : 0
+const recruitLevelRange = (buildings: GuildBuildings) => {
+  const base = arrivalRecruitLevel(buildings.barracks)
+  const bonus = recruitTrainingLevelBonus(buildings.training)
+  return { min: base + bonus, max: base + bonus + (buildings.tavern >= 3 ? 1 : 0) }
+}
+const rollRecruitLevel = (buildings: GuildBuildings) => {
+  const range = recruitLevelRange(buildings)
+  return range.min + Math.floor(Math.random() * (range.max - range.min + 1))
+}
 const condRecovery    = (infLv: number)      => [0, 8, 15, 25, 40][infLv] ?? 0
 const xpMultiplier    = (trainLv: number)    => [1.0, 1.3, 1.7, 2.2][trainLv - 1] ?? 1.0
 
@@ -650,6 +669,7 @@ function App() {
   const [draggingMercId, setDraggingMercId] = useState<string | null>(null)
   const [selectedRoomId, setSelectedRoomId] = useState<RoomId | null>('식당')
   const [dropTargetRoom, setDropTargetRoom] = useState<RoomId | null>(null)
+  const [sceneFocusId, setSceneFocusId] = useState<SceneFocusId | null>(null)
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [showQuestModal, setShowQuestModal] = useState(false)
   const [showMercModal, setShowMercModal] = useState(false)
@@ -789,13 +809,24 @@ function App() {
       const subAction = room === '식당'
         ? `판매 담당 ${Math.min(occupants.length, diningSalesCapacity(roomLv))}/${diningSalesCapacity(roomLv)}명 · 고용 한도 ${activeMercCount}/${cap}명`
         : ''
-      return { room, roomLv, occupants, cap, nextCost, canUpgrade, blocked, status, action, subAction }
+      const nextEffect = roomLv < 3 ? ROOM_EFFECTS[room].desc[roomLv] : '최대 레벨'
+      const recommendation = room === '길드마스터룸'
+        ? '주력 용병을 배치해 호감도와 실효 전력을 키우세요.'
+        : room === '훈련소'
+        ? '저레벨 용병을 배치하면 매일 경험치를 얻습니다.'
+        : '남는 대기 용병을 배치하면 음식 판매 수익이 납니다.'
+      return { room, roomLv, occupants, cap, nextCost, canUpgrade, blocked, status, action, subAction, nextEffect, recommendation }
     })
   }, [activeMercCount, mercs, pendingMercIds, roomLevels, state.fame, state.morale])
   const selectedRoomOperation = useMemo(
     () => roomOperations.find(r => r.room === selectedRoomId) ?? null,
     [roomOperations, selectedRoomId]
   )
+  const sceneFocus = sceneFocusId ? SCENE_FOCUS[sceneFocusId] : null
+  const focusRoom = (room: RoomId) => {
+    setSelectedRoomId(room)
+    setSceneFocusId(room)
+  }
   // ── Game logic ───────────────────────────────────
 
   const log = (msg: string) => setQuestLog(prev => [...prev, msg].slice(-20))
@@ -863,8 +894,9 @@ function App() {
     setState(prev => ({ ...prev, gold: prev.gold - ARRIVAL_REFRESH_COST }))
     const diningLv = roomLevels['식당'] ?? 1
     const cnt = arrivalCount(buildings.barracks) + diningArrivalBonus(diningLv)
-    setGateArrivals(Array.from({ length: cnt }, () => generateMercenary(buildings.tavern + diningTavernBonus(diningLv))))
-    log(`🔄 도착 목록 새로고침 (-${ARRIVAL_REFRESH_COST}G)`)
+    const recruitLevel = rollRecruitLevel(buildings)
+    setGateArrivals(Array.from({ length: cnt }, () => generateMercenary(buildings.tavern + diningTavernBonus(diningLv), false, { level: recruitLevel })))
+    log(`🔄 도착 목록 새로고침 (-${ARRIVAL_REFRESH_COST}G) · 신병 Lv${recruitLevel}`)
   }
 
   const premiumRefreshArrivals = () => {
@@ -873,8 +905,9 @@ function App() {
     setState(prev => ({ ...prev, crystals: (prev.crystals ?? 0) - PREMIUM_REFRESH_COST }))
     const diningLv = roomLevels['식당'] ?? 1
     const cnt = arrivalCount(buildings.barracks) + diningArrivalBonus(diningLv)
-    setGateArrivals(Array.from({ length: cnt }, () => generateMercenary(buildings.tavern + diningTavernBonus(diningLv), true)))
-    log(`💎 고급 새로고침! B급 이상 보장 (-${PREMIUM_REFRESH_COST}💎)`)
+    const recruitLevel = rollRecruitLevel(buildings)
+    setGateArrivals(Array.from({ length: cnt }, () => generateMercenary(buildings.tavern + diningTavernBonus(diningLv), true, { level: recruitLevel })))
+    log(`💎 고급 새로고침! B급 이상 보장 · 신병 Lv${recruitLevel} (-${PREMIUM_REFRESH_COST}💎)`)
   }
 
   const dismissArrival = (mercId: string) => {
@@ -1380,7 +1413,7 @@ function App() {
 
   const updateMercRoom = (mercId: string, room: Mercenary['room']) => {
     setMercs(prev => prev.map(m => m.id === mercId ? { ...m, room } : m))
-    setSelectedRoomId(room)
+    focusRoom(room)
     setDropTargetRoom(null)
   }
 
@@ -1521,11 +1554,13 @@ function App() {
       if (Date.now() < nextArrivalTime) return
       const diningLv = roomLevels['식당'] ?? 1
       const count = arrivalCount(buildings.barracks) + diningArrivalBonus(diningLv)
-      const arrivals = Array.from({ length: count }, () => generateMercenary(buildings.tavern + diningTavernBonus(diningLv)))
+      const recruitLevel = rollRecruitLevel(buildings)
+      const arrivals = Array.from({ length: count }, () => generateMercenary(buildings.tavern + diningTavernBonus(diningLv), false, { level: recruitLevel }))
       setGateArrivals(arrivals)
       setNextArrivalTime(Date.now() + ARRIVAL_INTERVAL_MS)
       const grades = arrivals.map(a => a.grade).join(', ')
-      setQuestLog(prev => [...prev, `🚶 새 용병 ${count}명 도착! (${grades}급)`].slice(-20))
+      const levels = recruitLevelRange(buildings)
+      setQuestLog(prev => [...prev, `🚶 새 용병 ${count}명 도착! (${grades}급 · Lv${levels.min}${levels.max > levels.min ? `~${levels.max}` : ''})`].slice(-20))
     }
     const timer = setInterval(check, 30_000) // 30초마다 체크
     return () => clearInterval(timer)
@@ -1748,9 +1783,9 @@ function App() {
       const arrivalChance = [0.08, 0.14, 0.20, 0.25][Math.min(guildLv - 1, 3)]
       for (let i = 0; i < questSuccessCount; i++) {
         if (Math.random() < arrivalChance) {
-          const newcomer = generateMercenary(buildings.tavern)
+          const newcomer = generateMercenary(buildings.tavern, false, { level: rollRecruitLevel(buildings) })
           setGateArrivals(prev => [...prev, newcomer])
-          logs.push(`🚶 ${newcomer.name}(${newcomer.grade}급) — 소문을 듣고 찾아왔습니다!`)
+          logs.push(`🚶 ${newcomer.name}(Lv${newcomer.level} ${newcomer.grade}급) — 소문을 듣고 찾아왔습니다!`)
           break
         }
       }
@@ -2031,9 +2066,9 @@ function App() {
           { id: 'g3', text: '오늘 사망 없음', progress: deathsToday === 0 ? 1 : 0, target: 1, reward: '300G +10명성 +2💎' },
         ]
         return (
-          <div className="fixed z-20 rounded-xl overflow-hidden"
-            style={{ right: 8, top: 56, width: 160, background: 'rgba(12,8,3,0.92)', border: '1px solid rgba(200,150,50,0.25)', boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}>
-            <div className="px-2.5 py-1.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.03)' }}>
+          <div className="fixed z-20 rounded-xl overflow-hidden gm-float-card"
+            style={{ right: 8, top: 56, width: 172 }}>
+            <div className="gm-panel-titlebar px-2.5 py-1.5">
               <p className="text-xs font-bold" style={{ color: 'rgba(251,191,36,0.8)' }}>🎯 일일 목표</p>
             </div>
             <div className="px-2.5 py-1.5 space-y-1.5">
@@ -2059,10 +2094,8 @@ function App() {
 
       {/* ── 플레이 힌트 카드 (우하단 플로팅) ── */}
       {activeHint && (
-        <div className="fixed bottom-6 right-6 z-40 w-72 rounded-2xl overflow-hidden shadow-2xl"
-          style={{ background: '#0f0d20', border: '1px solid rgba(120,80,200,0.45)', boxShadow: '0 0 30px rgba(80,40,160,0.25)' }}>
-          <div className="flex items-center justify-between px-4 py-2.5"
-            style={{ background: 'rgba(120,80,200,0.15)', borderBottom: '1px solid rgba(120,80,200,0.2)' }}>
+        <div className="fixed bottom-6 right-6 z-40 w-72 rounded-2xl overflow-hidden shadow-2xl gm-float-card">
+          <div className="gm-panel-titlebar flex items-center justify-between px-4 py-2.5">
             <div className="flex items-center gap-2">
               <span className="text-lg leading-none">{activeHint.icon}</span>
               <span className="text-sm font-bold" style={{ color: '#c4b5fd' }}>{activeHint.tag}</span>
@@ -2133,8 +2166,8 @@ function App() {
             { id: 'crystal', iconSrc: UI_ICONS.crystal, v: `${state.crystals ?? 0}`, c: 'text-violet-300', bg: 'rgba(139,92,246,0.08)', border: 'rgba(139,92,246,0.25)' },
             { id: 'mercs', icon: '👥', v: `${activeMercCount}/${maxHireCap(roomLevels['식당'] ?? 1)}`, c: activeMercCount >= maxHireCap(roomLevels['식당'] ?? 1) ? 'text-red-400' : 'text-slate-300', bg: 'rgba(255,255,255,0.04)', border: activeMercCount >= maxHireCap(roomLevels['식당'] ?? 1) ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.08)' },
           ].map(({ id, icon, iconSrc, v, c, bg, border }) => (
-            <div key={id} className="flex items-center gap-1 rounded-md px-1.5 py-1"
-              style={{ background: bg, border: `1px solid ${border}` }}>
+            <div key={id} className="gm-resource-pill flex items-center gap-1 rounded-md px-1.5 py-1"
+              style={{ borderColor: border, backgroundColor: bg }}>
               {iconSrc
                 ? <img src={iconSrc} alt="" className="h-4 w-4 object-contain" draggable={false} />
                 : <span className="text-sm leading-none">{icon}</span>}
@@ -2173,6 +2206,10 @@ function App() {
 
       {/* ── Scene ─────────────────────────────────────── */}
       <div className="relative overflow-hidden flex-1" style={{ minHeight: 0 }}>
+        <div className="absolute inset-0 gm-scene-camera pointer-events-none" style={{
+          transform: sceneFocus ? `scale(${sceneFocus.scale})` : 'scale(1)',
+          transformOrigin: sceneFocus?.origin ?? 'center center',
+        }}>
         {/* Background Image */}
         <div className="absolute inset-0" style={{
           backgroundImage: `url(${bgBase})`,
@@ -2187,11 +2224,18 @@ function App() {
         <div className="absolute inset-x-0 top-0 pointer-events-none" style={{ height: 60, background: 'linear-gradient(180deg,rgba(0,0,0,0.5) 0%,transparent 100%)' }} />
         <div className="absolute inset-x-0 bottom-0 pointer-events-none" style={{ height: 80, background: 'linear-gradient(0deg,rgba(0,0,0,0.55) 0%,transparent 100%)' }} />
 
+        <button
+          onClick={() => setSceneFocusId('외부')}
+          className={`absolute rounded-2xl transition-all ${sceneFocusId === '외부' ? 'opacity-100' : 'opacity-0 hover:opacity-100'}`}
+          style={{ left: '2%', top: '20%', width: '38%', height: '72%', zIndex: 6, border: '1px solid rgba(251,191,36,0.18)', background: 'rgba(251,191,36,0.035)', cursor: 'zoom-in' }}
+          title="외부 진입로 확대"
+        />
+        </div>
+
         {/* ── Top-left buttons ── */}
-        <div className="absolute flex gap-1.5" style={{ left: 10, top: 8, zIndex: 10 }}>
+        <div className="absolute flex gap-1.5 rounded-2xl px-2 py-2 gm-float-card" style={{ left: 10, top: 8, zIndex: 10 }}>
           <button onClick={() => setShowQuestModal(true)}
-            className="rounded-xl px-3 py-1.5 text-sm font-bold text-white transition-all hover:brightness-115 active:scale-95 relative"
-            style={{ background: 'linear-gradient(135deg,rgba(20,45,90,0.92),rgba(20,60,180,0.88))', border: '1px solid rgba(80,150,255,0.55)', boxShadow: '0 2px 12px rgba(0,0,0,0.4)' }}>
+            className="gm-button-chrome rounded-lg px-3 py-1.5 text-sm font-bold text-white transition-all relative">
             📜 계약 관리
             {(activeQuests.length > 0 || Object.keys(pendingAssign).some(k => (pendingAssign[k] ?? []).some(Boolean))) && (
               <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-xs font-extrabold flex items-center justify-center text-white"
@@ -2201,32 +2245,25 @@ function App() {
             )}
           </button>
           <button onClick={() => setShowMercModal(true)}
-            className="rounded-xl px-3 py-1.5 text-sm font-bold text-white transition-all hover:brightness-115 active:scale-95"
-            style={{ background: 'linear-gradient(135deg,rgba(15,60,30,0.92),rgba(18,80,36,0.88))', border: '1px solid rgba(50,200,100,0.45)', boxShadow: '0 2px 12px rgba(0,0,0,0.4)' }}>
+            className="gm-button-chrome rounded-lg px-3 py-1.5 text-sm font-bold text-white transition-all">
             👥 용병 목록
           </button>
           <button onClick={() => { setBattleResultPage(Math.max(0, battleResults.length - 1)); setShowLogModal(true) }}
-            className="rounded-xl px-3 py-1.5 text-sm font-semibold transition-all hover:brightness-115 active:scale-95"
-            style={{ background: 'rgba(30,20,10,0.82)', border: '1px solid rgba(200,160,80,0.3)', color: 'rgba(210,185,140,0.9)', boxShadow: '0 2px 12px rgba(0,0,0,0.4)' }}>
+            className="gm-button-muted rounded-lg px-3 py-1.5 text-sm font-semibold transition-all"
+            style={{ color: 'rgba(230,205,160,0.95)' }}>
             📋 결과{battleResults.length > 0 && <span className="ml-1 text-xs opacity-60">{battleResults.length}</span>}
           </button>
           <button onClick={refreshArrivals}
-            className="rounded-xl px-3 py-1.5 text-sm font-semibold transition-all hover:brightness-115 active:scale-95"
+            className="gm-button-muted rounded-lg px-3 py-1.5 text-sm font-semibold transition-all"
             style={{
-              background: state.gold >= ARRIVAL_REFRESH_COST ? 'rgba(40,28,6,0.88)' : 'rgba(20,15,5,0.7)',
-              border: `1px solid ${state.gold >= ARRIVAL_REFRESH_COST ? 'rgba(220,160,40,0.55)' : 'rgba(120,90,30,0.25)'}`,
               color: state.gold >= ARRIVAL_REFRESH_COST ? 'rgba(255,210,80,0.9)' : 'rgba(100,75,25,0.4)',
-              boxShadow: '0 2px 12px rgba(0,0,0,0.4)'
             }}>
             🔄 용병 ({ARRIVAL_REFRESH_COST}G)
           </button>
           <button onClick={premiumRefreshArrivals}
-            className="rounded-xl px-3 py-1.5 text-sm font-semibold transition-all hover:brightness-115 active:scale-95"
+            className="gm-button-muted rounded-lg px-3 py-1.5 text-sm font-semibold transition-all"
             style={{
-              background: (state.crystals ?? 0) >= PREMIUM_REFRESH_COST ? 'rgba(30,10,60,0.92)' : 'rgba(15,8,30,0.7)',
-              border: `1px solid ${(state.crystals ?? 0) >= PREMIUM_REFRESH_COST ? 'rgba(167,139,250,0.6)' : 'rgba(80,60,120,0.25)'}`,
               color: (state.crystals ?? 0) >= PREMIUM_REFRESH_COST ? 'rgba(196,181,253,0.95)' : 'rgba(80,60,120,0.4)',
-              boxShadow: '0 2px 12px rgba(0,0,0,0.4)'
             }}>
             💎 고급 ({PREMIUM_REFRESH_COST}💎)
           </button>
@@ -2309,8 +2346,8 @@ function App() {
             </span>
           </div>
           {selectedRoomOperation && (
-            <div className="absolute z-30 rounded-xl p-3 w-72"
-              style={{ left: -300, top: 64, background: 'rgba(8,10,18,0.88)', border: '1px solid rgba(230,190,110,0.34)', boxShadow: '0 14px 44px rgba(0,0,0,0.42)', backdropFilter: 'blur(10px)' }}>
+            <div className="absolute z-30 rounded-xl p-3 gm-panel-shell"
+              style={{ right: 12, top: 38, width: 270, backdropFilter: 'blur(10px)' }}>
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <p className="text-xs font-bold tracking-widest uppercase" style={{ color: 'rgba(220,170,90,0.7)' }}>Room Control</p>
@@ -2339,6 +2376,17 @@ function App() {
               {selectedRoomOperation.subAction && (
                 <p className="text-xs mt-1" style={{ color: 'rgba(148,163,184,0.72)' }}>{selectedRoomOperation.subAction}</p>
               )}
+              <div className="grid grid-cols-2 gap-1.5 mt-3">
+                <div className="rounded-lg px-2 py-1.5" style={{ background: 'rgba(251,191,36,0.055)', border: '1px solid rgba(251,191,36,0.14)' }}>
+                  <p className="text-[10px]" style={{ color: 'rgba(251,191,36,0.7)' }}>다음 효과</p>
+                  <p className="text-xs font-bold text-amber-100">{selectedRoomOperation.nextEffect}</p>
+                </div>
+                <div className="rounded-lg px-2 py-1.5" style={{ background: 'rgba(125,211,252,0.055)', border: '1px solid rgba(125,211,252,0.14)' }}>
+                  <p className="text-[10px]" style={{ color: 'rgba(125,211,252,0.7)' }}>빈 슬롯</p>
+                  <p className="text-xs font-bold text-cyan-100">{Math.max(0, selectedRoomOperation.cap - selectedRoomOperation.occupants.length)}칸</p>
+                </div>
+              </div>
+              <p className="text-xs mt-2 leading-relaxed" style={{ color: 'rgba(226,232,240,0.68)' }}>{selectedRoomOperation.recommendation}</p>
               <div className="flex items-center gap-2 mt-3">
                 {selectedRoomOperation.nextCost > 0 && (
                   <button
@@ -2386,7 +2434,7 @@ function App() {
               return (
                 <div className={`gm-room-surface flex-1 min-h-0 rounded-xl overflow-hidden flex flex-col ${selectedRoomId === room ? 'gm-room-selected' : ''} ${dropTargetRoom === room ? 'gm-room-drop-target' : ''}`}
                   style={{ background: 'rgba(10,6,25,0.32)', border: '1px solid rgba(160,110,255,0.35)', boxShadow: '0 2px 12px rgba(80,40,160,0.1)' }}
-                  onClick={() => setSelectedRoomId(room)}
+                  onClick={() => focusRoom(room)}
                   onDragOver={e => e.preventDefault()}
                   onDragEnter={() => draggingMercId && setDropTargetRoom(room)}
                   onDragLeave={() => setDropTargetRoom(prev => prev === room ? null : prev)}
@@ -2502,7 +2550,7 @@ function App() {
               return (
                 <div className={`gm-room-surface flex-1 min-h-0 rounded-xl overflow-hidden flex flex-col ${selectedRoomId === room ? 'gm-room-selected' : ''} ${dropTargetRoom === room ? 'gm-room-drop-target' : ''}`}
                   style={{ background: 'rgba(22,8,4,0.32)', border: '1px solid rgba(220,100,50,0.35)', boxShadow: '0 2px 12px rgba(180,60,20,0.08)' }}
-                  onClick={() => setSelectedRoomId(room)}
+                  onClick={() => focusRoom(room)}
                   onDragOver={e => e.preventDefault()}
                   onDragEnter={() => draggingMercId && setDropTargetRoom(room)}
                   onDragLeave={() => setDropTargetRoom(prev => prev === room ? null : prev)}
@@ -2581,7 +2629,7 @@ function App() {
               return (
                 <div className={`gm-room-surface flex-1 min-h-0 rounded-xl overflow-hidden flex flex-col ${selectedRoomId === room ? 'gm-room-selected' : ''} ${dropTargetRoom === room ? 'gm-room-drop-target' : ''}`}
                   style={{ background: 'rgba(4,16,8,0.32)', border: '1px solid rgba(60,200,100,0.35)', boxShadow: '0 2px 12px rgba(20,140,60,0.08)' }}
-                  onClick={() => setSelectedRoomId(room)}
+                  onClick={() => focusRoom(room)}
                   onDragOver={e => e.preventDefault()}
                   onDragEnter={() => draggingMercId && setDropTargetRoom(room)}
                   onDragLeave={() => setDropTargetRoom(prev => prev === room ? null : prev)}
@@ -2863,6 +2911,25 @@ function App() {
               </div>{/* end 1F wrapper */}
             </div>
           </div>
+        <div className="absolute inset-0 pointer-events-none" style={{
+          zIndex: 24,
+          backgroundImage: `url(${sceneFrontProps})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center top',
+          backgroundRepeat: 'no-repeat',
+        }} />
+        {sceneFocus && (
+          <div className="absolute left-1/2 top-3 z-40 flex -translate-x-1/2 items-center gap-2 rounded-xl px-3 py-2"
+            style={{ background: 'rgba(8,10,18,0.84)', border: '1px solid rgba(251,191,36,0.28)', boxShadow: '0 10px 30px rgba(0,0,0,0.34)', backdropFilter: 'blur(10px)' }}>
+            <span className="text-xs font-bold" style={{ color: 'rgba(251,191,36,0.86)' }}>확대 보기</span>
+            <span className="text-sm font-extrabold text-white">{sceneFocus.label}</span>
+            <button onClick={() => setSceneFocusId(null)}
+              className="rounded-lg px-2 py-1 text-xs font-bold text-white transition hover:brightness-125"
+              style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>
+              전체 보기
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ── Arrival Preview Modal ─────────────── */}
@@ -3070,11 +3137,10 @@ function App() {
 
       {/* ── Quest Modal (left-side panel) ─────────────── */}
       {showQuestModal && (
-        <div className="fixed left-0 bottom-0 z-30 flex flex-col overflow-hidden"
-          style={{ top: 48, width: '42%', background: 'rgba(4,4,12,0.98)', borderRight: '2px solid rgba(59,130,246,0.3)', borderBottom: '2px solid rgba(59,130,246,0.2)' }}>
+        <div className="gm-panel-shell fixed left-2 bottom-2 z-30 flex flex-col overflow-hidden rounded-2xl"
+          style={{ top: 56, width: '40%', maxWidth: 620 }}>
           {/* ── 패널 헤더 ── */}
-          <div className="flex-shrink-0"
-            style={{ background: 'linear-gradient(180deg,rgba(12,10,28,1) 0%,rgba(6,5,18,1) 100%)', borderBottom: '1px solid rgba(59,130,246,0.25)' }}>
+          <div className="gm-panel-titlebar flex-shrink-0">
             {/* 타이틀 행 */}
             <div className="flex items-center justify-between px-4 pt-3 pb-2 gap-2">
               <div className="flex items-center gap-2 min-w-0 overflow-hidden">
@@ -3088,8 +3154,8 @@ function App() {
                 )}
               </div>
               <button onClick={() => setShowQuestModal(false)}
-                className="flex-shrink-0 flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-bold transition-all hover:brightness-125"
-                style={{ background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.45)', color: '#fca5a5' }}>
+                className="gm-button-muted flex-shrink-0 flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-bold transition-all"
+                style={{ color: '#fca5a5' }}>
                 ✕ 닫기
               </button>
             </div>
@@ -3134,7 +3200,7 @@ function App() {
                         const elapsed = Math.max(0, aq.durationMs - Math.max(0, aq.completesAt - tickTime))
                         const pct = Math.min(100, (elapsed / aq.durationMs) * 100)
                         return (
-                          <div key={aq.questId} className="rounded-xl overflow-hidden"
+                          <div key={aq.questId} className="gm-card-chrome rounded-xl overflow-hidden"
                             style={{ background: 'rgba(8,20,35,0.9)', border: '1px solid rgba(14,165,233,0.4)' }}>
                             <div className="h-0.5 w-full" style={{ background: `linear-gradient(90deg, rgba(14,165,233,0.9) ${pct}%, rgba(14,165,233,0.15) ${pct}%)` }} />
                             <div className="px-3 py-2.5">
@@ -3208,7 +3274,7 @@ function App() {
                         const successRate = filledSlots.length > 0 ? calcSuccessRate(quest, filledSlots, mercs) : 0
                         const hasPending = filledSlots.length > 0
                         return (
-                          <div key={quest.id} className="rounded-xl overflow-hidden"
+                          <div key={quest.id} className="gm-card-chrome rounded-xl overflow-hidden"
                             style={{
                               background: hasPending ? 'rgba(251,191,36,0.06)' : 'rgba(8,7,18,0.8)',
                               border: `1px solid ${hasPending ? 'rgba(251,191,36,0.4)' : 'rgba(255,255,255,0.08)'}`,
@@ -3371,7 +3437,7 @@ function App() {
                                       })
                                       setDraggingMercId(null); setSelectedMercId(null)
                                     }}
-                                    className="rounded cursor-pointer transition-all flex flex-col gap-0.5 flex-shrink-0"
+                                    className="gm-slot-frame rounded cursor-pointer transition-all flex flex-col gap-0.5 flex-shrink-0"
                                     style={{
                                       padding: '3px 5px', minWidth: 70, maxWidth: 100,
                                       background: assignedMerc ? (elemMatch ? ELEMENT_BG[quest.element] : 'rgba(99,102,241,0.2)') :
@@ -3405,7 +3471,7 @@ function App() {
                             </div>
                             <div className="flex gap-1.5 mt-1.5">
                               <button onClick={() => launchQuest(quest.id)} disabled={!canLaunch}
-                                className="flex-1 rounded-lg py-1.5 text-xs font-extrabold transition-all"
+                                className="gm-button-primary flex-1 rounded-lg py-1.5 text-xs font-extrabold transition-all"
                                 style={{
                                   background: canLaunch ? 'linear-gradient(135deg,#92400e,#d97706)' : 'rgba(255,255,255,0.04)',
                                   color: canLaunch ? 'white' : 'rgba(100,100,100,0.4)',
@@ -3417,7 +3483,7 @@ function App() {
                               </button>
                               {assigned.some(Boolean) && (
                                 <button onClick={() => cancelPending(quest.id)}
-                                  className="rounded-lg px-2 py-1.5 text-xs transition hover:text-white"
+                                  className="gm-button-muted rounded-lg px-2 py-1.5 text-xs transition hover:text-white"
                                   style={{ background: 'rgba(255,255,255,0.04)', color: 'rgba(130,130,130,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
                                   초기화
                                 </button>
@@ -3434,11 +3500,30 @@ function App() {
             {activeTab === 'buildings' && (
               <div className="flex-1 overflow-y-auto p-3 space-y-2">
                 <p className="text-sm text-slate-500">건물을 건설·업그레이드하여 길드를 강화하세요.</p>
+                {(() => {
+                  const range = recruitLevelRange(buildings)
+                  return (
+                    <div className="gm-card-chrome rounded-xl px-3 py-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="text-xs font-bold tracking-widest" style={{ color: 'rgba(125,211,252,0.68)' }}>RECRUIT PROFILE</p>
+                          <p className="text-sm font-bold text-white mt-0.5">도착 용병 Lv{range.min}{range.max > range.min ? `~${range.max}` : ''}</p>
+                        </div>
+                        <span className="text-xs font-bold rounded-full px-2 py-1" style={{ background: 'rgba(34,197,94,0.12)', color: '#86efac', border: '1px solid rgba(34,197,94,0.24)' }}>
+                          병영 기준
+                        </span>
+                      </div>
+                      <p className="text-xs mt-1.5" style={{ color: 'rgba(148,163,184,0.72)' }}>
+                        병영은 기준 레벨, 훈련소 Lv3+는 신병 훈련 보너스, 선술집 Lv3+는 상한 변동을 제공합니다.
+                      </p>
+                    </div>
+                  )
+                })()}
                 {/* Merchant / Dungeon badges */}
                 {merchantState?.active && (
                   <button
                     onClick={() => setShowMerchant(true)}
-                    className="w-full text-sm px-3 py-1.5 rounded-xl font-bold"
+                    className="gm-button-chrome w-full text-sm px-3 py-1.5 rounded-lg font-bold"
                     style={{ background: 'rgba(251,191,36,0.2)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.4)' }}
                   >
                     행상인 방문 중 — 클릭하여 구매
@@ -3447,7 +3532,7 @@ function App() {
                 {activeDungeon && activeDungeon.status === 'active' && (
                   <button
                     onClick={() => setShowDungeon(true)}
-                    className="w-full text-sm px-3 py-1.5 rounded-xl font-bold"
+                    className="gm-button-chrome w-full text-sm px-3 py-1.5 rounded-lg font-bold"
                     style={{ background: 'rgba(124,58,237,0.2)', color: '#a78bfa', border: '1px solid rgba(124,58,237,0.4)' }}
                   >
                     던전 진행 중: {activeDungeon.name} ({activeDungeon.currentFloor}/{activeDungeon.maxFloor}층)
@@ -3463,7 +3548,7 @@ function App() {
                   return (
                     <button
                       onClick={() => setShowExpedition(true)}
-                      className="w-full text-sm px-3 py-1.5 rounded-xl font-bold"
+                      className="gm-button-chrome w-full text-sm px-3 py-1.5 rounded-lg font-bold"
                       style={{
                         background: hasResult ? 'rgba(34,197,94,0.2)' : onExpedition ? 'rgba(139,92,246,0.15)' : onCooldown ? 'rgba(60,60,70,0.4)' : 'rgba(88,28,135,0.2)',
                         color: hasResult ? '#4ade80' : onExpedition ? '#c4b5fd' : onCooldown ? 'rgba(130,130,150,0.6)' : '#a78bfa',
@@ -3484,7 +3569,7 @@ function App() {
                   const cost = isBuilt ? upgradeCost(id, currentLv) : info.buildCost
                   const canAfford = state.gold >= cost
                   return (
-                    <div key={id} className="rounded-xl overflow-hidden" style={{
+                    <div key={id} className="gm-card-chrome rounded-xl overflow-hidden" style={{
                       background: isBuilt ? 'rgba(15,20,30,0.8)' : 'rgba(10,10,15,0.5)',
                       border: `1px solid ${isBuilt ? (atMax ? 'rgba(251,191,36,0.25)' : 'rgba(255,255,255,0.1)') : 'rgba(255,255,255,0.05)'}`
                     }}>
@@ -3511,7 +3596,7 @@ function App() {
                         </div>
                         {!atMax && (
                           <button onClick={() => upgradeBuilding(id)} disabled={!canAfford}
-                            className="rounded-lg px-3 py-1.5 text-sm font-bold transition flex-shrink-0"
+                            className="gm-button-primary rounded-lg px-3 py-1.5 text-sm font-bold transition flex-shrink-0"
                             style={{
                               background: canAfford ? 'linear-gradient(135deg,#064e3b,#059669)' : 'rgba(255,255,255,0.04)',
                               color: canAfford ? '#6ee7b7' : 'rgba(100,100,100,0.4)',
@@ -3545,10 +3630,9 @@ function App() {
       {showMercModal && (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/80 p-4 pt-12 overflow-y-auto"
           onClick={() => setShowMercModal(false)}>
-          <div className="w-full max-w-3xl rounded-2xl flex flex-col gap-3 p-4"
-            style={{ background: '#0d0d1a', border: '1px solid rgba(34,197,94,0.3)' }}
+          <div className="gm-modal-frame w-full max-w-3xl rounded-2xl flex flex-col gap-3 p-4"
             onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between">
+            <div className="gm-panel-titlebar -mx-4 -mt-4 mb-1 flex items-center justify-between px-4 py-3">
               <h2 className="text-base font-bold text-white">👥 길드 용병 목록 <span className="text-sm text-slate-400 font-normal">({mercs.length}명)</span></h2>
               <button onClick={() => setShowMercModal(false)} className="text-slate-400 hover:text-white text-lg leading-none px-2">×</button>
             </div>
@@ -3576,7 +3660,7 @@ function App() {
               {/* 용병 상세 */}
               <div>
                 {selectedMercDetail ? (
-                  <div className="rounded-xl overflow-hidden sticky top-0" style={{ background: 'rgba(10,8,18,0.95)', border: '1px solid rgba(255,255,255,0.09)' }}>
+                  <div className="gm-card-chrome rounded-xl overflow-hidden sticky top-0" style={{ background: 'rgba(10,8,18,0.95)' }}>
                     {/* Header */}
                     <div className="px-4 pt-4 pb-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                       <div className="flex items-center gap-3 mb-2.5">
