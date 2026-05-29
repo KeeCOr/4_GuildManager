@@ -32,6 +32,9 @@ const SCENE_FOCUS: Record<SceneFocusId, { label: string; scale: number; origin: 
   '식당': { label: '식당', scale: 1.72, origin: '73% 82%' },
   '외부': { label: '외부 진입로', scale: 1.55, origin: '22% 74%' },
 }
+const SCENE_MIN_ZOOM = 1
+const SCENE_MAX_ZOOM = 2.35
+const SCENE_RESET_ZOOM = 1.03
 
 // 속성 아이콘·색상
 const ELEMENT_ICON: Record<string, string> = { 불: '🔥', 얼음: '🧊', 자연: '🌿', 암흑: '🌑', 빛: '✨' }
@@ -670,6 +673,7 @@ function App() {
   const [selectedRoomId, setSelectedRoomId] = useState<RoomId | null>('식당')
   const [dropTargetRoom, setDropTargetRoom] = useState<RoomId | null>(null)
   const [sceneFocusId, setSceneFocusId] = useState<SceneFocusId | null>(null)
+  const [manualSceneCamera, setManualSceneCamera] = useState<{ scale: number; origin: string } | null>(null)
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [showQuestModal, setShowQuestModal] = useState(false)
   const [showMercModal, setShowMercModal] = useState(false)
@@ -689,6 +693,7 @@ function App() {
     try { const v = localStorage.getItem('gm_buildingWidth'); return v ? Number(v) : 58 } catch { return 58 }
   })
   const buildingResizeRef = useRef<{ startX: number; startWidth: number } | null>(null)
+  const sceneTouchRef = useRef<{ distance: number; centerX: number; centerY: number } | null>(null)
   const handleBuildingResizeStart = (e: React.MouseEvent) => {
     e.preventDefault()
     buildingResizeRef.current = { startX: e.clientX, startWidth: buildingWidth }
@@ -823,10 +828,70 @@ function App() {
     [roomOperations, selectedRoomId]
   )
   const sceneFocus = sceneFocusId ? SCENE_FOCUS[sceneFocusId] : null
+  const sceneCamera = manualSceneCamera
+    ? { ...manualSceneCamera, label: '사용자 확대' }
+    : sceneFocus
+      ? sceneFocus
+      : { scale: 1, origin: 'center center', label: '' }
+  const isSceneZoomed = sceneCamera.scale > SCENE_RESET_ZOOM
   const focusRoom = (room: RoomId) => {
     setSelectedRoomId(room)
+    setManualSceneCamera(null)
     setSceneFocusId(room)
   }
+  const resetSceneCamera = () => {
+    setManualSceneCamera(null)
+    setSceneFocusId(null)
+  }
+  const zoomSceneAt = useCallback((clientX: number, clientY: number, delta: number) => {
+    const target = document.querySelector('[data-scene-viewport="true"]') as HTMLElement | null
+    if (!target) return
+    const rect = target.getBoundingClientRect()
+    const x = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100))
+    const y = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100))
+    const currentScale = manualSceneCamera?.scale ?? sceneFocus?.scale ?? 1
+    const nextScale = Math.max(SCENE_MIN_ZOOM, Math.min(SCENE_MAX_ZOOM, currentScale + delta))
+    if (nextScale <= SCENE_RESET_ZOOM) {
+      resetSceneCamera()
+      return
+    }
+    setSceneFocusId(null)
+    setManualSceneCamera({ scale: nextScale, origin: `${x.toFixed(1)}% ${y.toFixed(1)}%` })
+  }, [manualSceneCamera?.scale, sceneFocus?.scale])
+  const handleSceneWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    if (showQuestModal || showMercModal || previewArrival || roomMercPreview || showSaveModal || showLogModal || showTutorial) return
+    e.preventDefault()
+    const sensitivity = e.ctrlKey ? 0.006 : 0.0018
+    zoomSceneAt(e.clientX, e.clientY, -e.deltaY * sensitivity)
+  }, [previewArrival, roomMercPreview, showLogModal, showMercModal, showQuestModal, showSaveModal, showTutorial, zoomSceneAt])
+  const getTouchCameraPoint = (touches: React.TouchList) => {
+    const a = touches[0]
+    const b = touches[1]
+    const centerX = (a.clientX + b.clientX) / 2
+    const centerY = (a.clientY + b.clientY) / 2
+    const distance = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY)
+    return { centerX, centerY, distance }
+  }
+  const handleSceneTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length !== 2) {
+      sceneTouchRef.current = null
+      return
+    }
+    sceneTouchRef.current = getTouchCameraPoint(e.touches)
+  }, [])
+  const handleSceneTouchMove = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length !== 2 || !sceneTouchRef.current) return
+    e.preventDefault()
+    const next = getTouchCameraPoint(e.touches)
+    const prev = sceneTouchRef.current
+    const pinchDelta = (next.distance - prev.distance) / 180
+    const verticalDragDelta = (prev.centerY - next.centerY) / 520
+    zoomSceneAt(next.centerX, next.centerY, pinchDelta + verticalDragDelta)
+    sceneTouchRef.current = next
+  }, [zoomSceneAt])
+  const handleSceneTouchEnd = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length < 2) sceneTouchRef.current = null
+  }, [])
   // ── Game logic ───────────────────────────────────
 
   const log = (msg: string) => setQuestLog(prev => [...prev, msg].slice(-20))
@@ -2205,10 +2270,19 @@ function App() {
       </header>
 
       {/* ── Scene ─────────────────────────────────────── */}
-      <div className="relative overflow-hidden flex-1" style={{ minHeight: 0 }}>
+      <div
+        className="relative overflow-hidden flex-1"
+        data-scene-viewport="true"
+        onWheel={handleSceneWheel}
+        onTouchStart={handleSceneTouchStart}
+        onTouchMove={handleSceneTouchMove}
+        onTouchEnd={handleSceneTouchEnd}
+        onTouchCancel={handleSceneTouchEnd}
+        style={{ minHeight: 0, touchAction: 'none' }}
+      >
         <div className="absolute inset-0 gm-scene-camera pointer-events-none" style={{
-          transform: sceneFocus ? `scale(${sceneFocus.scale})` : 'scale(1)',
-          transformOrigin: sceneFocus?.origin ?? 'center center',
+          transform: `scale(${sceneCamera.scale})`,
+          transformOrigin: sceneCamera.origin,
         }}>
         {/* Background Image */}
         <div className="absolute inset-0" style={{
@@ -2230,10 +2304,9 @@ function App() {
           style={{ left: '2%', top: '20%', width: '38%', height: '72%', zIndex: 6, border: '1px solid rgba(251,191,36,0.18)', background: 'rgba(251,191,36,0.035)', cursor: 'zoom-in' }}
           title="외부 진입로 확대"
         />
-        </div>
 
         {/* ── Top-left buttons ── */}
-        <div className="absolute flex gap-1.5 rounded-2xl px-2 py-2 gm-float-card" style={{ left: 10, top: 8, zIndex: 10 }}>
+        <div className={`absolute flex gap-1.5 rounded-2xl px-2 py-2 gm-float-card ${isSceneZoomed ? 'hidden' : ''}`} style={{ left: 10, top: 8, zIndex: 10 }}>
           <button onClick={() => setShowQuestModal(true)}
             className="gm-button-chrome rounded-lg px-3 py-1.5 text-sm font-bold text-white transition-all relative">
             📜 계약 관리
@@ -2345,7 +2418,7 @@ function App() {
               ⚔ 길드 홀 Lv{buildings.hall}
             </span>
           </div>
-          {selectedRoomOperation && (
+          {selectedRoomOperation && !isSceneZoomed && (
             <div className="absolute z-30 rounded-xl p-3 gm-panel-shell"
               style={{ right: 12, top: 38, width: 270, backdropFilter: 'blur(10px)' }}>
               <div className="flex items-start justify-between gap-2">
@@ -2918,12 +2991,97 @@ function App() {
           backgroundPosition: 'center top',
           backgroundRepeat: 'no-repeat',
         }} />
-        {sceneFocus && (
+        </div>
+        {isSceneZoomed && (
+          <div className="absolute flex gap-1.5 rounded-2xl px-2 py-2 gm-float-card" style={{ left: 10, top: 8, zIndex: 42 }}>
+            <button onClick={() => setShowQuestModal(true)}
+              className="gm-button-chrome rounded-lg px-3 py-1.5 text-sm font-bold text-white transition-all relative">
+              퀘스트 관리
+              {(activeQuests.length > 0 || Object.keys(pendingAssign).some(k => (pendingAssign[k] ?? []).some(Boolean))) && (
+                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-xs font-extrabold flex items-center justify-center text-white"
+                  style={{ background: 'linear-gradient(135deg,#dc2626,#ef4444)' }}>
+                  {activeQuests.length + Object.keys(pendingAssign).filter(k => (pendingAssign[k] ?? []).some(Boolean)).length}
+                </span>
+              )}
+            </button>
+            <button onClick={() => setShowMercModal(true)}
+              className="gm-button-chrome rounded-lg px-3 py-1.5 text-sm font-bold text-white transition-all">
+              용병 목록
+            </button>
+            <button onClick={() => { setBattleResultPage(Math.max(0, battleResults.length - 1)); setShowLogModal(true) }}
+              className="gm-button-muted rounded-lg px-3 py-1.5 text-sm font-semibold transition-all"
+              style={{ color: 'rgba(230,205,160,0.95)' }}>
+              결과{battleResults.length > 0 && <span className="ml-1 text-xs opacity-60">{battleResults.length}</span>}
+            </button>
+            <button onClick={refreshArrivals}
+              className="gm-button-muted rounded-lg px-3 py-1.5 text-sm font-semibold transition-all"
+              style={{
+                color: state.gold >= ARRIVAL_REFRESH_COST ? 'rgba(255,210,80,0.9)' : 'rgba(100,75,25,0.4)',
+              }}>
+              갱신 ({ARRIVAL_REFRESH_COST}G)
+            </button>
+            <button onClick={premiumRefreshArrivals}
+              className="gm-button-muted rounded-lg px-3 py-1.5 text-sm font-semibold transition-all"
+              style={{
+                color: (state.crystals ?? 0) >= PREMIUM_REFRESH_COST ? 'rgba(196,181,253,0.95)' : 'rgba(80,60,120,0.4)',
+              }}>
+              고급 ({PREMIUM_REFRESH_COST}◆)
+            </button>
+          </div>
+        )}
+        {selectedRoomOperation && isSceneZoomed && (
+          <div className="absolute z-40 rounded-xl p-3 gm-panel-shell"
+            style={{ right: 12, top: 56, width: 270, backdropFilter: 'blur(10px)' }}>
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-xs font-bold tracking-widest uppercase" style={{ color: 'rgba(220,170,90,0.7)' }}>Room Control</p>
+                <h3 className="text-base font-extrabold text-white mt-0.5">
+                  {ROOM_EFFECTS[selectedRoomOperation.room].icon} {selectedRoomOperation.room}
+                  <span className="text-xs ml-1.5 text-slate-400">Lv{selectedRoomOperation.roomLv}</span>
+                </h3>
+              </div>
+              <button onClick={() => setSelectedRoomId(null)} className="text-slate-500 hover:text-white text-lg leading-none px-1">×</button>
+            </div>
+            <div className="grid grid-cols-3 gap-1.5 mt-3">
+              <div className="rounded-lg px-2 py-1.5" style={{ background: 'rgba(255,255,255,0.045)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                <p className="text-[10px] text-slate-500">인원</p>
+                <p className="text-sm font-bold text-white">{selectedRoomOperation.occupants.length}/{selectedRoomOperation.cap}</p>
+              </div>
+              <div className="rounded-lg px-2 py-1.5" style={{ background: 'rgba(255,255,255,0.045)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                <p className="text-[10px] text-slate-500">상태</p>
+                <p className={selectedRoomOperation.occupants.length === 0 ? 'text-sm font-bold text-slate-400' : selectedRoomOperation.occupants.length >= selectedRoomOperation.cap ? 'text-sm font-bold text-amber-300' : 'text-sm font-bold text-emerald-300'}>{selectedRoomOperation.status}</p>
+              </div>
+              <div className="rounded-lg px-2 py-1.5" style={{ background: 'rgba(255,255,255,0.045)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                <p className="text-[10px] text-slate-500">효과</p>
+                <p className="text-sm font-bold text-cyan-200">{ROOM_EFFECTS[selectedRoomOperation.room].desc[selectedRoomOperation.roomLv - 1]}</p>
+              </div>
+            </div>
+            <p className="text-xs mt-3" style={{ color: 'rgba(200,210,220,0.76)' }}>{selectedRoomOperation.action}</p>
+            {selectedRoomOperation.subAction && (
+              <p className="text-xs mt-1" style={{ color: 'rgba(148,163,184,0.72)' }}>{selectedRoomOperation.subAction}</p>
+            )}
+            <div className="flex items-center gap-2 mt-3">
+              {selectedRoomOperation.nextCost > 0 && (
+                <button
+                  disabled={!selectedRoomOperation.canUpgrade || state.gold < selectedRoomOperation.nextCost}
+                  onClick={() => upgradeRoom(selectedRoomOperation.room)}
+                  className="gm-button-primary rounded-lg px-3 py-1.5 text-xs font-extrabold text-white disabled:cursor-not-allowed">
+                  업그레이드 {selectedRoomOperation.nextCost}G
+                </button>
+              )}
+              <span className="text-xs" style={{ color: selectedRoomOperation.blocked ? 'rgba(251,191,36,0.82)' : 'rgba(148,163,184,0.72)' }}>
+                {selectedRoomOperation.blocked ? '상위 조건 필요' : draggingMercId ? '방 위에 놓으면 배치' : '용병을 드래그해 배치'}
+              </span>
+            </div>
+          </div>
+        )}
+        {isSceneZoomed && (
           <div className="absolute left-1/2 top-3 z-40 flex -translate-x-1/2 items-center gap-2 rounded-xl px-3 py-2"
             style={{ background: 'rgba(8,10,18,0.84)', border: '1px solid rgba(251,191,36,0.28)', boxShadow: '0 10px 30px rgba(0,0,0,0.34)', backdropFilter: 'blur(10px)' }}>
             <span className="text-xs font-bold" style={{ color: 'rgba(251,191,36,0.86)' }}>확대 보기</span>
-            <span className="text-sm font-extrabold text-white">{sceneFocus.label}</span>
-            <button onClick={() => setSceneFocusId(null)}
+            <span className="text-sm font-extrabold text-white">{sceneCamera.label}</span>
+            <span className="text-xs font-bold" style={{ color: 'rgba(226,232,240,0.62)' }}>{Math.round(sceneCamera.scale * 100)}%</span>
+            <button onClick={resetSceneCamera}
               className="rounded-lg px-2 py-1 text-xs font-bold text-white transition hover:brightness-125"
               style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>
               전체 보기
