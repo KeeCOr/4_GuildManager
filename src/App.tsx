@@ -334,12 +334,33 @@ function calcQuestDurationMs(quest: Quest, assignedMercs: Mercenary[]): number {
 // ── Guild Level system ─────────────────────────────────────────────────────
 // fame 0→Lv1, 30→Lv2, 80→Lv3, 180→Lv4, 350→Lv5
 const GUILD_LEVEL_FAME = [0, 30, 80, 180, 350] as const
+const GUILD_RANKS = [
+  { name: '신생 길드', fame: 0, icon: 'I', perk: '기본 의뢰와 방문자를 관리합니다.' },
+  { name: '지역 길드', fame: 30, icon: 'II', perk: '더 많은 의뢰와 안정적인 방문자가 열립니다.' },
+  { name: '공인 길드', fame: 80, icon: 'III', perk: '상위 난이도 의뢰와 고레벨 방문자가 등장합니다.' },
+  { name: '왕국 길드', fame: 180, icon: 'IV', perk: '고급 장비와 정예 방문자의 비중이 증가합니다.' },
+  { name: '전설 길드', fame: 350, icon: 'V', perk: '최상위 의뢰와 영웅급 방문자를 노릴 수 있습니다.' },
+] as const
 
 function computeGuildLevel(fame: number): number {
   for (let i = GUILD_LEVEL_FAME.length - 1; i >= 0; i--) {
     if (fame >= GUILD_LEVEL_FAME[i]) return i + 1
   }
   return 1
+}
+
+function getGuildRank(fame: number) {
+  const level = computeGuildLevel(fame)
+  const rank = GUILD_RANKS[level - 1] ?? GUILD_RANKS[0]
+  const next = GUILD_RANKS[level] ?? null
+  return { level, rank, next }
+}
+
+function questRiskLabel(successRate: number, deathRisk: number) {
+  if (successRate >= 75 && deathRisk <= 0.12) return { label: '안전', color: '#86efac', bg: 'rgba(34,197,94,0.12)', border: 'rgba(34,197,94,0.28)' }
+  if (successRate >= 55 && deathRisk <= 0.22) return { label: '주의', color: '#fcd34d', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.28)' }
+  if (successRate >= 35) return { label: '위험', color: '#fb923c', bg: 'rgba(249,115,22,0.13)', border: 'rgba(249,115,22,0.3)' }
+  return { label: '무모', color: '#fca5a5', bg: 'rgba(239,68,68,0.13)', border: 'rgba(239,68,68,0.32)' }
 }
 
 // 길드마스터룸 최대 업그레이드 레벨 = min(3, guildLevel)
@@ -767,6 +788,7 @@ function App() {
   const [questsCompletedToday, setQuestsCompletedToday] = useState(0)
   const [deathsToday, setDeathsToday] = useState(0)
   const [goalsClaimed, setGoalsClaimed] = useState<Set<string>>(new Set())
+  const lastGuildRankRef = useRef(computeGuildLevel(state.fame))
 
   // ── Derived ──────────────────────────────────────
   const deployedMercIds = useMemo(
@@ -806,6 +828,11 @@ function App() {
         : occupants.length >= cap
         ? '가득 참'
         : '운영 중'
+      const badge = room === '길드마스터룸'
+        ? occupants.length > 0 ? '호감도 관리 중' : '핵심 용병 배치'
+        : room === '훈련소'
+        ? occupants.length > 0 ? '훈련 중' : '훈련 대기'
+        : occupants.length > 0 ? '음식 판매 중' : '판매 인력 필요'
       const action = room === '길드마스터룸'
         ? `배치 효과: ${ROOM_EFFECTS[room].desc[roomLv - 1]}`
         : room === '훈련소'
@@ -819,8 +846,10 @@ function App() {
         ? '주력 용병을 배치해 호감도와 실효 전력을 키우세요.'
         : room === '훈련소'
         ? '저레벨 용병을 배치하면 매일 경험치를 얻습니다.'
-        : '남는 대기 용병을 배치하면 음식 판매 수익이 납니다.'
-      return { room, roomLv, occupants, cap, nextCost, canUpgrade, blocked, status, action, subAction, nextEffect, recommendation }
+        : occupants.length < diningSalesCapacity(roomLv)
+        ? `판매 담당을 ${diningSalesCapacity(roomLv) - occupants.length}명 더 배치하면 일일 수익이 오릅니다.`
+        : '판매 인력이 충분합니다. 남는 용병은 훈련소나 퀘스트에 보내세요.'
+      return { room, roomLv, occupants, cap, nextCost, canUpgrade, blocked, status, badge, action, subAction, nextEffect, recommendation }
     })
   }, [activeMercCount, mercs, pendingMercIds, roomLevels, state.fame, state.morale])
   const selectedRoomOperation = useMemo(
@@ -828,6 +857,16 @@ function App() {
     [roomOperations, selectedRoomId]
   )
   const sceneFocus = sceneFocusId ? SCENE_FOCUS[sceneFocusId] : null
+  const guildRank = useMemo(() => getGuildRank(state.fame), [state.fame])
+  const tutorialMissions = useMemo(() => ([
+    { id: 'room', text: '방을 눌러 역할 확인', done: selectedRoomId !== null },
+    { id: 'dining', text: '식당에 용병 배치', done: mercs.some(m => m.room === '식당' && m.status === '대기중') },
+    { id: 'questOpen', text: '퀘스트 관리 열기', done: showQuestModal || activeQuests.length > 0 },
+    { id: 'assign', text: '퀘스트에 용병 배치', done: Object.values(pendingAssign).some(slots => slots.some(Boolean)) || activeQuests.length > 0 },
+    { id: 'launch', text: '첫 파견 보내기', done: activeQuests.length > 0 || completedQuestIds.length > 0 },
+    { id: 'grow', text: '명성 30 달성', done: state.fame >= 30 },
+  ]), [activeQuests.length, completedQuestIds.length, mercs, pendingAssign, selectedRoomId, showQuestModal, state.fame])
+  const tutorialDoneCount = tutorialMissions.filter(m => m.done).length
   const sceneCamera = manualSceneCamera
     ? { ...manualSceneCamera, label: '사용자 확대' }
     : sceneFocus
@@ -896,6 +935,15 @@ function App() {
 
   const log = (msg: string) => setQuestLog(prev => [...prev, msg].slice(-20))
 
+  useEffect(() => {
+    const nextLevel = computeGuildLevel(state.fame)
+    if (nextLevel > lastGuildRankRef.current) {
+      const nextRank = GUILD_RANKS[nextLevel - 1]
+      log(`🏅 길드 랭크 상승: ${nextRank.name}! ${nextRank.perk}`)
+    }
+    lastGuildRankRef.current = nextLevel
+  }, [state.fame])
+
   // ── Equipment / Merchant / Dungeon hooks ─────────────────────────────────
   const { buyFromMerchant } = useMerchant({
     merchantState,
@@ -943,6 +991,14 @@ function App() {
   useEffect(() => {
     if (questLog.some(l => l.startsWith('✅'))) showHint('growth')
   }, [questLog, showHint])
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') resetSceneCamera()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   const hireMerc = (merc: Mercenary) => {
     if (state.gold < merc.cost) { log(`금화 부족: ${merc.name} 고용 불가 (${merc.cost}G 필요)`); return }
@@ -1066,6 +1122,34 @@ function App() {
       return { ...prev, [questId]: next as string[] }
     })
     setSelectedMercId(null)
+  }
+
+  const recommendQuestParty = (quest: Quest) => {
+    const alreadyPending = new Set(Object.entries(pendingAssign)
+      .filter(([qid]) => qid !== quest.id)
+      .flatMap(([, slots]) => slots.filter(Boolean)))
+    const candidates = mercs
+      .filter(m => m.status === '대기중' && !deployedMercIds.has(m.id) && !alreadyPending.has(m.id) && m.condition >= 10)
+      .map(m => {
+        const elementScore = m.element === quest.element ? 35 : elementRelation(m.element, quest.element) === 'advantage' ? 24 : elementRelation(m.element, quest.element) === 'disadvantage' ? -12 : 0
+        const trapScore = quest.trapFocus && canTrap(m) ? 28 + Math.round((m.trap_disarm + eqTrap(m)) * 0.15) : 0
+        const conditionScore = Math.round(m.condition * 0.18)
+        return { m, score: effPowerVs(m, quest.element) + elementScore + trapScore + conditionScore }
+      })
+      .sort((a, b) => b.score - a.score)
+    const picked = candidates.slice(0, quest.slots).map(x => x.m.id)
+    if (picked.length === 0) {
+      log('추천 편성 가능한 대기 용병이 없습니다.')
+      return
+    }
+    setPendingAssign(prev => {
+      const cleaned: Record<string, string[]> = Object.fromEntries(
+        Object.entries(prev).map(([qid, slots]) => [qid, slots.map(s => picked.includes(s) ? null : s) as string[]])
+      )
+      return { ...cleaned, [quest.id]: [...picked, ...Array(Math.max(0, quest.slots - picked.length)).fill(null)] as string[] }
+    })
+    const rate = calcSuccessRate(quest, picked, mercs)
+    log(`✨ [${quest.name}] 추천 편성 완료: 성공률 ${rate}%`)
   }
 
   const unassignMerc = (questId: string, slotIdx: number) => {
@@ -2123,6 +2207,27 @@ function App() {
         )
       })()}
 
+      {!showTutorial && tutorialDoneCount < tutorialMissions.length && (
+        <div className="fixed z-20 rounded-xl overflow-hidden gm-float-card"
+          style={{ left: 10, top: 100, width: 260, border: '1px solid rgba(251,191,36,0.2)' }}>
+          <div className="gm-panel-titlebar px-3 py-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-extrabold tracking-widest text-amber-100">길드 운영 가이드</p>
+              <span className="text-xs font-bold text-amber-300">{tutorialDoneCount}/{tutorialMissions.length}</span>
+            </div>
+          </div>
+          <div className="p-3 space-y-1.5">
+            {tutorialMissions.map(m => (
+              <div key={m.id} className="flex items-center gap-2 rounded-lg px-2 py-1.5"
+                style={{ background: m.done ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.035)', border: `1px solid ${m.done ? 'rgba(34,197,94,0.22)' : 'rgba(255,255,255,0.06)'}` }}>
+                <span className="text-xs font-extrabold" style={{ color: m.done ? '#86efac' : 'rgba(251,191,36,0.78)' }}>{m.done ? '✓' : '•'}</span>
+                <span className="text-xs font-semibold" style={{ color: m.done ? 'rgba(209,250,229,0.88)' : 'rgba(226,232,240,0.78)' }}>{m.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── 일일 목표 카드 (우측 플로팅) ── */}
       {(() => {
         const allGoals = [
@@ -2197,7 +2302,7 @@ function App() {
           <span className="text-lg">🏰</span>
           <div>
             <h1 className="text-sm font-extrabold text-white leading-none tracking-wide">용병단 길드</h1>
-            <p className="text-xs tracking-widest uppercase mt-0.5" style={{ color: 'rgba(150,110,50,0.6)' }}>Medieval Mercenary Manager</p>
+            <p className="text-xs tracking-widest uppercase mt-0.5" style={{ color: 'rgba(150,110,50,0.6)' }}>{guildRank.rank.icon} · {guildRank.rank.name}</p>
           </div>
         </div>
 
@@ -2210,6 +2315,7 @@ function App() {
             <div className="flex items-center gap-1.5 rounded-lg px-2 py-1 flex-shrink-0"
               style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)' }}>
               <span className="text-sm font-extrabold text-amber-300">Lv{gLv}</span>
+              <span className="text-xs font-bold text-amber-100">{guildRank.rank.name}</span>
               {nextFame !== null ? (
                 <>
                   <div className="w-14 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
@@ -2427,6 +2533,7 @@ function App() {
                   <h3 className="text-base font-extrabold text-white mt-0.5">
                     {ROOM_EFFECTS[selectedRoomOperation.room].icon} {selectedRoomOperation.room}
                     <span className="text-xs ml-1.5 text-slate-400">Lv{selectedRoomOperation.roomLv}</span>
+                    <span className="gm-room-badge ml-2 align-middle">{selectedRoomOperation.badge}</span>
                   </h3>
                 </div>
                 <button onClick={() => setSelectedRoomId(null)} className="text-slate-500 hover:text-white text-lg leading-none px-1">×</button>
@@ -2504,6 +2611,7 @@ function App() {
               const canUpgrade = roomLv < 3
               const upgCost = canUpgrade && costs ? costs[roomLv - 1] : 0
               const souls = mercs.filter(m => m.status === '영혼')
+              const op = roomOperations.find(r => r.room === room)
               return (
                 <div className={`gm-room-surface flex-1 min-h-0 rounded-xl overflow-hidden flex flex-col ${selectedRoomId === room ? 'gm-room-selected' : ''} ${dropTargetRoom === room ? 'gm-room-drop-target' : ''}`}
                   style={{ background: 'rgba(10,6,25,0.32)', border: '1px solid rgba(160,110,255,0.35)', boxShadow: '0 2px 12px rgba(80,40,160,0.1)' }}
@@ -2519,6 +2627,7 @@ function App() {
                     </span>
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs" style={{ color: 'rgba(120,180,120,0.7)' }}>{ROOM_EFFECTS[room].desc[roomLv - 1]}</span>
+                      {op && <span className="gm-room-badge">{op.badge}</span>}
                       {canUpgrade && (
                         <button onClick={() => upgradeRoom(room)}
                           className="text-xs font-bold rounded px-1.5 py-0.5 text-white transition hover:brightness-125"
@@ -2620,6 +2729,7 @@ function App() {
               const costs = ROOM_UPGRADE_COSTS[room]
               const canUpgrade = roomLv < 3 && roomLv < (roomLevels['길드마스터룸'] ?? 1)
               const upgCost = canUpgrade && costs ? costs[roomLv - 1] : 0
+              const op = roomOperations.find(r => r.room === room)
               return (
                 <div className={`gm-room-surface flex-1 min-h-0 rounded-xl overflow-hidden flex flex-col ${selectedRoomId === room ? 'gm-room-selected' : ''} ${dropTargetRoom === room ? 'gm-room-drop-target' : ''}`}
                   style={{ background: 'rgba(22,8,4,0.32)', border: '1px solid rgba(220,100,50,0.35)', boxShadow: '0 2px 12px rgba(180,60,20,0.08)' }}
@@ -2635,6 +2745,7 @@ function App() {
                     </span>
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs" style={{ color: 'rgba(120,180,120,0.7)' }}>{ROOM_EFFECTS[room].desc[roomLv - 1]}</span>
+                      {op && <span className="gm-room-badge">{op.badge}</span>}
                       {canUpgrade && (
                         <button onClick={() => upgradeRoom(room)}
                           className="text-xs font-bold rounded px-1.5 py-0.5 text-white transition hover:brightness-125"
@@ -2699,6 +2810,7 @@ function App() {
               const costs = ROOM_UPGRADE_COSTS[room]
               const canUpgrade = roomLv < 3 && roomLv < (roomLevels['길드마스터룸'] ?? 1)
               const upgCost = canUpgrade && costs ? costs[roomLv - 1] : 0
+              const op = roomOperations.find(r => r.room === room)
               return (
                 <div className={`gm-room-surface flex-1 min-h-0 rounded-xl overflow-hidden flex flex-col ${selectedRoomId === room ? 'gm-room-selected' : ''} ${dropTargetRoom === room ? 'gm-room-drop-target' : ''}`}
                   style={{ background: 'rgba(4,16,8,0.32)', border: '1px solid rgba(60,200,100,0.35)', boxShadow: '0 2px 12px rgba(20,140,60,0.08)' }}
@@ -2714,6 +2826,7 @@ function App() {
                     </span>
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs" style={{ color: 'rgba(120,180,120,0.7)' }}>{ROOM_EFFECTS[room].desc[roomLv - 1]}</span>
+                      {op && <span className="gm-room-badge">{op.badge}</span>}
                       {canUpgrade && (
                         <button onClick={() => upgradeRoom(room)}
                           className="text-xs font-bold rounded px-1.5 py-0.5 text-white transition hover:brightness-125"
@@ -3038,6 +3151,7 @@ function App() {
                 <h3 className="text-base font-extrabold text-white mt-0.5">
                   {ROOM_EFFECTS[selectedRoomOperation.room].icon} {selectedRoomOperation.room}
                   <span className="text-xs ml-1.5 text-slate-400">Lv{selectedRoomOperation.roomLv}</span>
+                  <span className="gm-room-badge ml-2 align-middle">{selectedRoomOperation.badge}</span>
                 </h3>
               </div>
               <button onClick={() => setSelectedRoomId(null)} className="text-slate-500 hover:text-white text-lg leading-none px-1">×</button>
@@ -3430,6 +3544,11 @@ function App() {
                         const totalAssignedEff = filledSlots.map(id => mercs.find(m => m.id === id)).filter(Boolean).reduce((s, m) => s + effPowerVs(m!, quest.element), 0)
                         const powerRatio = Math.min(1, totalAssignedEff / quest.difficulty)
                         const successRate = filledSlots.length > 0 ? calcSuccessRate(quest, filledSlots, mercs) : 0
+                        const assignedMercs = filledSlots.map(id => mercs.find(m => m.id === id)).filter(Boolean) as Mercenary[]
+                        const maxDeathRisk = assignedMercs.length > 0
+                          ? Math.max(...assignedMercs.map(m => calcMercDeathRisk(quest, m, assignedMercs)))
+                          : quest.deathRisk
+                        const risk = questRiskLabel(successRate, maxDeathRisk)
                         const hasPending = filledSlots.length > 0
                         return (
                           <div key={quest.id} className="gm-card-chrome rounded-xl overflow-hidden"
@@ -3473,6 +3592,9 @@ function App() {
                                   </span>
                                   <span className="text-xs rounded px-1 py-0.5 font-semibold" style={{ background: 'rgba(14,165,233,0.12)', color: 'rgba(125,211,252,0.85)' }}>
                                     ⏱{quest.duration}일
+                                  </span>
+                                  <span className="text-xs rounded px-1 py-0.5 font-extrabold" style={{ background: risk.bg, color: risk.color, border: `1px solid ${risk.border}` }}>
+                                    {filledSlots.length > 0 ? risk.label : '편성 전'}
                                   </span>
                                 </div>
                               </div>
@@ -3533,7 +3655,7 @@ function App() {
                               <div className="mb-1.5">
                                 <div className="flex justify-between text-xs mb-0.5">
                                   <span style={{ color: 'rgba(120,120,120,0.6)' }}>성공률</span>
-                                  <span className="font-bold" style={{ color: successRate >= 70 ? '#86efac' : successRate >= 45 ? '#fcd34d' : '#fca5a5' }}>{successRate}%</span>
+                                  <span className="font-bold" style={{ color: successRate >= 70 ? '#86efac' : successRate >= 45 ? '#fcd34d' : '#fca5a5' }}>{successRate}% · {risk.label}</span>
                                 </div>
                                 <div className="h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
                                   <div className="h-full rounded-full transition-all" style={{
@@ -3541,6 +3663,13 @@ function App() {
                                     background: successRate >= 70 ? 'linear-gradient(90deg,#22c55e,#4ade80)' : successRate >= 45 ? 'linear-gradient(90deg,#f59e0b,#fbbf24)' : 'linear-gradient(90deg,#ef4444,#f87171)'
                                   }} />
                                 </div>
+                              </div>
+                            )}
+                            {filledSlots.length > 0 && (
+                              <div className="flex items-center justify-between rounded-lg px-2 py-1 mb-1.5 text-xs"
+                                style={{ background: risk.bg, border: `1px solid ${risk.border}` }}>
+                                <span className="font-bold" style={{ color: risk.color }}>출정 판단: {risk.label}</span>
+                                <span style={{ color: 'rgba(226,232,240,0.72)' }}>최대 사망위험 {Math.round(maxDeathRisk * 100)}%</span>
                               </div>
                             )}
                             {/* Chemistry score */}
@@ -3628,6 +3757,11 @@ function App() {
                               })}
                             </div>
                             <div className="flex gap-1.5 mt-1.5">
+                              <button onClick={() => recommendQuestParty(quest)}
+                                className="gm-button-muted rounded-lg px-2 py-1.5 text-xs font-bold transition hover:text-white"
+                                style={{ background: 'rgba(125,211,252,0.08)', color: 'rgba(186,230,253,0.92)', border: '1px solid rgba(125,211,252,0.18)' }}>
+                                추천 편성
+                              </button>
                               <button onClick={() => launchQuest(quest.id)} disabled={!canLaunch}
                                 className="gm-button-primary flex-1 rounded-lg py-1.5 text-xs font-extrabold transition-all"
                                 style={{
