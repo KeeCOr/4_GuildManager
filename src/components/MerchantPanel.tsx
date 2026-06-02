@@ -58,7 +58,11 @@ export function MerchantPanel({ merchant, gold, guildInventory, onBuy, onClose }
 
         <div className="space-y-3">
           {merchant.stock.length === 0 ? (
-            <div className="text-slate-500 text-center py-4">재고가 소진되었습니다.</div>
+            <div className="text-center py-8 px-4" style={{ color: '#64748b' }}>
+              <div className="text-4xl mb-3">🛍️</div>
+              <div className="font-semibold text-slate-400 mb-1">행상인의 재고가 소진되었어요</div>
+              <div className="text-sm text-slate-600">던전을 완료하면 새 재고가 들어옵니다</div>
+            </div>
           ) : (
             merchant.stock.map(item => {
               const cost = Math.round(item.buyCost * 1.2)

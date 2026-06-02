@@ -11,6 +11,7 @@ import { EquipmentModal } from './components/EquipmentModal'
 import { MerchantPanel } from './components/MerchantPanel'
 import { DungeonPanel } from './components/DungeonPanel'
 import { ExpeditionPanel, ExpeditionLaunchModal } from './components/ExpeditionPanel'
+import { ToastContainer, useToast } from './components/Toast'
 import { useMerchant } from './hooks/useMerchant'
 import { useDungeon } from './hooks/useDungeon'
 import { getSprite } from './assets/Character/sprites'
@@ -662,6 +663,9 @@ function loadAllSaveSlots(): (SaveSlotData | null)[] {
 // ── Main App ───────────────────────────────────────────────────────────────
 
 function App() {
+  // ── Toast ─────────────────────────────────────────
+  const { toasts, showToast, removeToast } = useToast()
+
   // ── State ────────────────────────────────────────
   const [mercs, setMercs] = useState<Mercenary[]>(initialMercenaries)
   const [activeQuests, setActiveQuests] = useState<ActiveQuest[]>([])
@@ -1078,6 +1082,11 @@ function App() {
       setGuildInventory(() => newInventory)
       return { ...m, equipment: { ...m.equipment, [slot]: itemId } }
     }))
+    if (itemId) {
+      showToast('장비 장착 완료!')
+    } else {
+      showToast('장비 해제 완료!')
+    }
   }
 
   const acceptDrop = (item: Equipment) => {
@@ -2412,7 +2421,7 @@ function App() {
         />
 
         {/* ── Top-left buttons ── */}
-        <div className={`absolute flex gap-1.5 rounded-2xl px-2 py-2 gm-float-card ${isSceneZoomed ? 'hidden' : ''}`} style={{ left: 10, top: 8, zIndex: 10 }}>
+        <div className="absolute flex gap-1.5 rounded-2xl px-2 py-2 gm-float-card" style={{ left: 10, top: 8, zIndex: 42 }}>
           <button onClick={() => setShowQuestModal(true)}
             className="gm-button-chrome rounded-lg px-3 py-1.5 text-sm font-bold text-white transition-all relative">
             📜 계약 관리
@@ -3105,43 +3114,6 @@ function App() {
           backgroundRepeat: 'no-repeat',
         }} />
         </div>
-        {isSceneZoomed && (
-          <div className="absolute flex gap-1.5 rounded-2xl px-2 py-2 gm-float-card" style={{ left: 10, top: 8, zIndex: 42 }}>
-            <button onClick={() => setShowQuestModal(true)}
-              className="gm-button-chrome rounded-lg px-3 py-1.5 text-sm font-bold text-white transition-all relative">
-              퀘스트 관리
-              {(activeQuests.length > 0 || Object.keys(pendingAssign).some(k => (pendingAssign[k] ?? []).some(Boolean))) && (
-                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-xs font-extrabold flex items-center justify-center text-white"
-                  style={{ background: 'linear-gradient(135deg,#dc2626,#ef4444)' }}>
-                  {activeQuests.length + Object.keys(pendingAssign).filter(k => (pendingAssign[k] ?? []).some(Boolean)).length}
-                </span>
-              )}
-            </button>
-            <button onClick={() => setShowMercModal(true)}
-              className="gm-button-chrome rounded-lg px-3 py-1.5 text-sm font-bold text-white transition-all">
-              용병 목록
-            </button>
-            <button onClick={() => { setBattleResultPage(Math.max(0, battleResults.length - 1)); setShowLogModal(true) }}
-              className="gm-button-muted rounded-lg px-3 py-1.5 text-sm font-semibold transition-all"
-              style={{ color: 'rgba(230,205,160,0.95)' }}>
-              결과{battleResults.length > 0 && <span className="ml-1 text-xs opacity-60">{battleResults.length}</span>}
-            </button>
-            <button onClick={refreshArrivals}
-              className="gm-button-muted rounded-lg px-3 py-1.5 text-sm font-semibold transition-all"
-              style={{
-                color: state.gold >= ARRIVAL_REFRESH_COST ? 'rgba(255,210,80,0.9)' : 'rgba(100,75,25,0.4)',
-              }}>
-              갱신 ({ARRIVAL_REFRESH_COST}G)
-            </button>
-            <button onClick={premiumRefreshArrivals}
-              className="gm-button-muted rounded-lg px-3 py-1.5 text-sm font-semibold transition-all"
-              style={{
-                color: (state.crystals ?? 0) >= PREMIUM_REFRESH_COST ? 'rgba(196,181,253,0.95)' : 'rgba(80,60,120,0.4)',
-              }}>
-              고급 ({PREMIUM_REFRESH_COST}◆)
-            </button>
-          </div>
-        )}
         {selectedRoomOperation && isSceneZoomed && (
           <div className="absolute z-40 rounded-xl p-3 gm-panel-shell"
             style={{ right: 12, top: 56, width: 270, backdropFilter: 'blur(10px)' }}>
@@ -4356,14 +4328,24 @@ function App() {
           merchant={merchantState}
           gold={state.gold}
           guildInventory={guildInventory}
-          onBuy={item => buyFromMerchant(
-            item, state.gold, guildInventory,
-            (bought, cost) => {
-              setState(prev => ({ ...prev, gold: prev.gold - cost }))
-              setGuildInventory(prev => [...prev, bought])
-            },
-            log,
-          )}
+          onBuy={item => {
+            const cost = Math.round(item.buyCost * 1.2)
+            if (state.gold < cost) {
+              showToast('골드 부족', 'error')
+            } else if (guildInventory.length >= 40) {
+              showToast('인벤토리 가득 참', 'error')
+            } else {
+              buyFromMerchant(
+                item, state.gold, guildInventory,
+                (bought, cost) => {
+                  setState(prev => ({ ...prev, gold: prev.gold - cost }))
+                  setGuildInventory(prev => [...prev, bought])
+                  showToast('구매 완료!')
+                },
+                log,
+              )
+            }
+          }}
           onClose={() => setShowMerchant(false)}
         />
       )}
@@ -4456,6 +4438,7 @@ function App() {
         </div>
       )}
     </div>
+    <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   )
 }

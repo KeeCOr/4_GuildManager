@@ -60,8 +60,11 @@ export function DungeonPanel({ dungeon, floorQuest, availableMercs, onDispatch, 
         </div>
 
         {isCompleted ? (
-          <div className="text-center py-6 text-emerald-400 font-bold text-lg">
-            던전 완전 클리어!
+          <div className="dungeon-clear-flash rounded-xl text-center py-6" style={{ border: '1px solid rgba(251,191,36,0.35)', background: 'rgba(251,191,36,0.06)' }}>
+            <div className="dungeon-clear-text text-amber-300 font-bold text-2xl mb-1">
+              ✨ 던전 완전 클리어! ✨
+            </div>
+            <div className="text-emerald-400 text-sm mt-1">모든 층을 정복했습니다!</div>
           </div>
         ) : (
           <>
@@ -89,22 +92,32 @@ export function DungeonPanel({ dungeon, floorQuest, availableMercs, onDispatch, 
         )}
 
         {/* Actions */}
-        <div className="flex gap-2 mt-2">
-          <button
-            onClick={onClose}
-            className="flex-1 py-2 rounded-lg text-sm font-bold"
-            style={{ background: 'rgba(255,255,255,0.08)', color: '#94a3b8' }}
-          >
-            닫기
-          </button>
-          {!isCompleted && (
+        <div className="flex gap-2 mt-4">
+          {isCompleted ? (
             <button
-              onClick={onAbandon}
-              className="py-2 px-4 rounded-lg text-sm font-bold"
-              style={{ background: 'rgba(239,68,68,0.2)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.4)' }}
+              onClick={onClose}
+              className={`flex-1 py-2 rounded-lg text-sm font-bold dungeon-reward-pulse`}
+              style={{ background: 'rgba(251,191,36,0.25)', color: '#fde68a', border: '1px solid rgba(251,191,36,0.5)' }}
             >
-              던전 포기
+              🏆 보상 수령 후 닫기
             </button>
+          ) : (
+            <>
+              <button
+                onClick={onClose}
+                className="flex-1 py-2 rounded-lg text-sm font-bold"
+                style={{ background: 'rgba(255,255,255,0.08)', color: '#94a3b8' }}
+              >
+                닫기
+              </button>
+              <button
+                onClick={onAbandon}
+                className="py-2 px-4 rounded-lg text-sm font-bold"
+                style={{ background: 'rgba(239,68,68,0.2)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.4)' }}
+              >
+                던전 포기
+              </button>
+            </>
           )}
         </div>
       </div>

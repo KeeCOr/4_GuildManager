@@ -123,7 +123,11 @@ export function EquipmentModal({ merc, guildInventory, onEquip, onClose }: Props
             )
           })}
           {guildInventory.length === 0 && (
-            <div className="text-slate-600 text-sm">인벤토리가 비어있습니다.</div>
+            <div className="text-center py-8 px-4">
+              <div className="text-4xl mb-3">🎒</div>
+              <div className="font-semibold text-slate-400 mb-1">장비가 없어요</div>
+              <div className="text-sm text-slate-600">상인에게서 구매하거나 던전 보상을 받으세요</div>
+            </div>
           )}
         </div>
       </div>
