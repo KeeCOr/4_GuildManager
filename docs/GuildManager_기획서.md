@@ -1584,3 +1584,39 @@ powerRatio
   
     4_GM · 아이언홀드 용병단 길드 기획서 · v1.1.71 · 2026-05-21
     React 18 + TypeScript · Vite · Tailwind CSS · Electron
+
+<!-- APPLIED_RESOURCES_START -->
+## 적용 리소스
+
+> 자동 갱신: 2026-06-04. 코드, 씬, 프리팹, 설정 파일에서 참조가 확인된 리소스 기준입니다.
+
+- 이미지/스프라이트: `src/assets/BG/BG_Base.jpg`, `src/assets/BG/props/front/scene-front-props.png`, `src/assets/UI/chrome/button-primary.png`, `src/assets/UI/chrome/modal-frame.png`, `src/assets/UI/chrome/panel-header.png`, `src/assets/UI/chrome/slot-frame.png`, `src/assets/UI/chrome/toast-frame.png`
+
+메모:
+- 리소스 후보 83개 중 자동 참조 확인 7개.
+<!-- APPLIED_RESOURCES_END -->
+
+<!-- RESOURCE_PREVIEWS_START -->
+## 공유용 이미지 미리보기
+
+> 자동 갱신: 2026-06-04. 공유 시 문서와 함께 아래 이미지 경로가 포함되어야 합니다.
+
+![4_GM button-primary](../src/assets/UI/chrome/button-primary.png)
+- `src/assets/UI/chrome/button-primary.png`
+
+![4_GM modal-frame](../src/assets/UI/chrome/modal-frame.png)
+- `src/assets/UI/chrome/modal-frame.png`
+
+![4_GM panel-header](../src/assets/UI/chrome/panel-header.png)
+- `src/assets/UI/chrome/panel-header.png`
+
+![4_GM slot-frame](../src/assets/UI/chrome/slot-frame.png)
+- `src/assets/UI/chrome/slot-frame.png`
+
+![4_GM toast-frame](../src/assets/UI/chrome/toast-frame.png)
+- `src/assets/UI/chrome/toast-frame.png`
+
+![4_GM BG_Base](../src/assets/BG/BG_Base.jpg)
+- `src/assets/BG/BG_Base.jpg`
+
+<!-- RESOURCE_PREVIEWS_END -->
