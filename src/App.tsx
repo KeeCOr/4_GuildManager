@@ -291,6 +291,8 @@ const maxHireCap        = (lv: number) => [6, 9, 12][Math.min(lv - 1, 2)]
 const diningSalesCapacity = (lv: number) => [2, 3, 4][Math.min(lv - 1, 2)]
 const diningArrivalBonus = (lv: number) => [0, 1, 2][Math.min(lv - 1, 2)]
 const diningTavernBonus  = (lv: number) => [0, 1, 2][Math.min(lv - 1, 2)]
+const reviveCost = (merc: Mercenary) => Math.round(merc.deathCost * Math.pow(1.65, merc.reviveCount ?? 0))
+const reviveChance = (merc: Mercenary) => Math.max(25, 90 - (merc.reviveCount ?? 0) * 15)
 const calcDiningSalesIncome = (lv: number, staff: Mercenary[], morale: number) => {
   const activeStaff = staff.slice(0, diningSalesCapacity(lv))
   if (activeStaff.length === 0) return 0
@@ -1210,13 +1212,18 @@ function App() {
   const reviveMerc = (mercId: string) => {
     const merc = mercs.find(m => m.id === mercId)
     if (!merc || merc.status !== '영혼') return
-    const cost = merc.deathCost
+    const cost = reviveCost(merc)
+    const chance = reviveChance(merc)
     if (state.gold < cost) { log(`금화 부족 — 부활 불가 (${cost}G 필요)`); return }
     setState(prev => ({ ...prev, gold: prev.gold - cost }))
+    if (Math.random() * 100 >= chance) {
+      log(`💀 ${merc.name} 소생 실패... (-${cost}G, 성공률 ${chance}%) 영혼은 아직 길드에 남아있습니다.`)
+      return
+    }
     setMercs(prev => prev.map(m => m.id === mercId
-      ? { ...m, status: '부상', hp: 10, condition: 10, favorability: Math.max(0, m.favorability - 20) }
+      ? { ...m, status: '부상', hp: 10, condition: 10, favorability: Math.max(0, m.favorability - 20), reviveCount: (m.reviveCount ?? 0) + 1 }
       : m))
-    log(`✨ ${merc.name} 부활! (-${cost}G) — 극도로 쇠약한 상태, 회복에 시간이 필요합니다`)
+    log(`✨ ${merc.name} 부활! (-${cost}G, 성공률 ${chance}%) — 다음 소생은 더 어렵고 비싸집니다.`)
   }
 
   // ── 정기 원정 ─────────────────────────────────────────────────────────────
@@ -2710,8 +2717,8 @@ function App() {
                               <div className="flex flex-col gap-0.5">
                                 <button onClick={() => reviveMerc(m.id)}
                                   className="text-xs rounded px-1.5 py-0.5 font-bold transition hover:brightness-125"
-                                  style={{ background: state.gold >= m.deathCost ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.04)', border: `1px solid ${state.gold >= m.deathCost ? 'rgba(34,197,94,0.45)' : 'rgba(255,255,255,0.08)'}`, color: state.gold >= m.deathCost ? '#86efac' : 'rgba(80,80,80,0.5)', cursor: state.gold >= m.deathCost ? 'pointer' : 'not-allowed' }}>
-                                  ✨{m.deathCost}G
+                                  style={{ background: state.gold >= reviveCost(m) ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.04)', border: `1px solid ${state.gold >= reviveCost(m) ? 'rgba(34,197,94,0.45)' : 'rgba(255,255,255,0.08)'}`, color: state.gold >= reviveCost(m) ? '#86efac' : 'rgba(80,80,80,0.5)', cursor: state.gold >= reviveCost(m) ? 'pointer' : 'not-allowed' }}>
+                                  ✨{reviveCost(m)}G · {reviveChance(m)}%
                                 </button>
                                 <button onClick={() => ascendMerc(m.id)}
                                   className="text-xs rounded px-1.5 py-0.5 font-bold transition hover:brightness-125"
@@ -3003,12 +3010,12 @@ function App() {
                                       <button onClick={() => reviveMerc(m.id)}
                                         className="text-xs rounded px-2 py-1 font-bold transition hover:brightness-125"
                                         style={{
-                                          background: state.gold >= m.deathCost ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.04)',
-                                          border: `1px solid ${state.gold >= m.deathCost ? 'rgba(34,197,94,0.5)' : 'rgba(255,255,255,0.08)'}`,
-                                          color: state.gold >= m.deathCost ? '#86efac' : 'rgba(80,80,80,0.5)',
-                                          cursor: state.gold >= m.deathCost ? 'pointer' : 'not-allowed',
+                                          background: state.gold >= reviveCost(m) ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.04)',
+                                          border: `1px solid ${state.gold >= reviveCost(m) ? 'rgba(34,197,94,0.5)' : 'rgba(255,255,255,0.08)'}`,
+                                          color: state.gold >= reviveCost(m) ? '#86efac' : 'rgba(80,80,80,0.5)',
+                                          cursor: state.gold >= reviveCost(m) ? 'pointer' : 'not-allowed',
                                         }}>
-                                        ✨ 부활 {m.deathCost}G
+                                        ✨ 부활 {reviveCost(m)}G · {reviveChance(m)}%
                                       </button>
                                       <button onClick={() => ascendMerc(m.id)}
                                         className="text-xs rounded px-2 py-1 font-bold transition hover:brightness-125"
@@ -3979,6 +3986,10 @@ function App() {
                         { l: '경험치', v: `${selectedMercDetail.experience}/${selectedMercDetail.expToNext}`, c: 'text-amber-300', bold: false },
                         { l: '미션 급여', v: `${MISSION_PAY_PER_DAY[selectedMercDetail.grade] ?? 4}G/일`, c: 'text-amber-300', bold: false },
                         { l: '사망 보상금', v: `${selectedMercDetail.deathCost}G`, c: 'text-red-400', bold: false },
+                        ...(selectedMercDetail.status === '영혼' ? [
+                          { l: '소생 비용', v: `${reviveCost(selectedMercDetail)}G`, c: 'text-emerald-300', bold: true },
+                          { l: '소생 확률', v: `${reviveChance(selectedMercDetail)}%`, c: 'text-purple-300', bold: true },
+                        ] : []),
                         { l: '나이', v: `${selectedMercDetail.age}세`, c: 'text-slate-300', bold: false },
                       ].map(({ l, v, c, bold }, idx, arr) => (
                         <div key={l} className="flex justify-between items-center px-3 py-1.5"
@@ -4147,15 +4158,15 @@ function App() {
                     </div>
                     <div className="flex flex-col gap-1 flex-shrink-0">
                       <button onClick={() => reviveMerc(m.id)}
-                        disabled={state.gold < m.deathCost}
+                        disabled={state.gold < reviveCost(m)}
                         className="text-xs rounded px-2.5 py-1 font-bold transition hover:brightness-125"
                         style={{
-                          background: state.gold >= m.deathCost ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.04)',
-                          border: `1px solid ${state.gold >= m.deathCost ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.06)'}`,
-                          color: state.gold >= m.deathCost ? '#86efac' : 'rgba(80,80,80,0.4)',
-                          cursor: state.gold >= m.deathCost ? 'pointer' : 'not-allowed',
+                          background: state.gold >= reviveCost(m) ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.04)',
+                          border: `1px solid ${state.gold >= reviveCost(m) ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.06)'}`,
+                          color: state.gold >= reviveCost(m) ? '#86efac' : 'rgba(80,80,80,0.4)',
+                          cursor: state.gold >= reviveCost(m) ? 'pointer' : 'not-allowed',
                         }}>
-                        ✨ {m.deathCost}G
+                        ✨ {reviveCost(m)}G · {reviveChance(m)}%
                       </button>
                       <button onClick={() => ascendMerc(m.id)}
                         className="text-xs rounded px-2.5 py-1 font-bold transition hover:brightness-125"

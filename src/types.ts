@@ -122,6 +122,7 @@ export interface Mercenary {
   hp: number
   cost: number
   deathCost: number
+  reviveCount?: number
   traits: Traits
   stats: {
     공격력: number
