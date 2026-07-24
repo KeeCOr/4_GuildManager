@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GuildManager update log v1.4.1</title>
+<style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.65;max-width:980px;margin:0 auto;padding:40px 24px;color:#20242a;background:#fafafa}h1{font-size:34px;margin:0 0 8px}h2{font-size:24px;margin-top:34px;border-bottom:1px solid #ddd;padding-bottom:6px}h3{font-size:18px;margin-top:24px}p,li,pre{font-size:15px}li{margin:5px 0}pre{white-space:pre-wrap;background:#fff;border:1px solid #ddd;border-radius:8px;padding:8px 10px}table{border-collapse:collapse;width:100%;margin:12px 0}th,td{border:1px solid #ddd;padding:8px 12px;text-align:left;vertical-align:top}th{background:#f5f5f5;font-weight:600}.loop-box{background:#fff;border:1px solid #ddd;border-radius:8px;padding:16px 20px;font-size:15px;white-space:pre-wrap;line-height:1.8}.checklist{list-style:none;padding-left:0}.checklist li::before{content:"✓ ";font-size:16px}hr{border:none;border-top:1px solid #ddd;margin:28px 0}blockquote{border-left:4px solid #ddd;margin:0;padding:8px 16px;color:#555;background:#f9f9f9;border-radius:0 8px 8px 0}code{background:#f0f0f0;border-radius:4px;padding:2px 5px;font-size:13px}</style>
+</head>
+<body>
+<h1>GuildManager 업데이트 내역서</h1>
+<h2>2026-06-24 문서 구조 정리</h2>
+<ul>
+<li>기획서와 업데이트 내역서를 분리했다.</li>
+<li>기획서는 게임 소개, 핵심 루프, MVP 가설, KPI, UX 원칙 중심으로 재작성했다.</li>
+<li>변경 이력, 구현 로그, 검증 기록은 이 문서에서 관리한다.</li>
+</ul>
+<h2>기존 문서에서 분리한 이력 후보</h2>
+<ul>
+<li>v1.1.43 신규</li>
+<li>Game Design Document · v1.1.43 · 2026-04-29</li>
+<li>파견 중에도 다른 퀘스트 동시 수행 가능. 타이머 완료 후 성공/실패 판정.</li>
+<li>선행 퀘스트를 완료해야 다음 체인 퀘스트가 풀에 출현한다. 체인 마지막 완료 시 스토리 모달 연출.</li>
+<li>완료 시 스토리: 수상한 화물 발견</li>
+<li>완료 시 체인 종료 스토리</li>
+<li>완료 시 스토리: 봉인된 유물 발견</li>
+<li>완료 시 스토리: 요새의 비밀</li>
+<li>완료 시 스토리: 어둠의 낌새</li>
+<li>완료 시 스토리: 어둠의 사원</li>
+<li>퀘스트 완료gold × duration—등급별 일당 × 소요일수</li>
+<li>&amp;#11088; &amp;#47749;&amp;#49457; &amp;#44060;&amp;#54200; (v1.1.43)</li>
+<li>&amp;#128147; &amp;#54984;&amp;#47828;&amp;#49548; &amp;#49464;&amp;#48516;&amp;#54868; (v1.1.43)</li>
+<li>&amp;#128161; &amp;#51059;&amp;#51116;&amp;#47141; &amp;#49884;&amp;#49828;&amp;#53596; (v1.1.43)</li>
+<li>&amp;#128142; &amp;#47560;&amp;#49437; &amp;#51088;&amp;#50896; (v1.1.43)</li>
+<li>&amp;#129504; FM &amp;#49457;&amp;#44201; &amp;#49884;&amp;#49828;&amp;#53596; (v1.1.43)</li>
+<li>&amp;#127991; &amp;#51204;&amp;#47928;&amp;#49457; &amp;#53468;&amp;#44536; (v1.1.43)</li>
+<li>&amp;#129309; &amp;#51032;&amp;#47113;&amp;#51064; NPC (v1.1.43)</li>
+</ul>
+<h2>작성 규칙</h2>
+<ul>
+<li>기능 추가, 밸런스 변경, UI/UX 수정, 리소스 교체, 빌드/배포 변경은 날짜와 버전을 함께 기록한다.</li>
+<li>기획서에는 최신 소개와 현재 설계 의도만 남기고, 과거 작업 로그는 이 문서로 이동한다.</li>
+<li>MD와 HTML은 항상 함께 갱신한다.</li>
+</ul>
+<h2>2026-06-29 v1.2.0 Quest Risk Advisory</h2>
+<ul>
+<li>Added <code>src/utils/questAdvisory.ts</code> to generate quest risk summaries and deterministic mercenary recommendations.</li>
+<li>Quest cards now show total death-risk estimate, highest-risk mercenary, expected condition drain, top two risk factors, and hard warnings for low power or high-risk members.</li>
+<li>The recommend-party action now uses the same candidate scoring as the visible recommendation panel and logs the top recommended names.</li>
+<li>Added a regression test that locks the advisory utility exports and App integration points.</li>
+<li>Verification target: <code>npm test</code>, <code>npm run build</code>, Electron portable <code>GuildManager_v1.2.0_portable.exe</code>.</li>
+</ul>
+<h2>2026-06-29 v1.1.95 Dungeon Entrance Visual Runtime Link</h2>
+<ul>
+<li><code>src/components/DungeonPanel.tsx</code> now imports <code>src/assets/Generated/dungeon-entrance.png</code> and renders it as the top visual banner of the dungeon modal.</li>
+<li>The image uses the existing dungeon entrance resource already listed in the image resource table, so the runtime now matches the documented resource set.</li>
+<li>Added a regression test that checks the dungeon panel keeps importing and rendering the dungeon entrance visual.</li>
+<li>Verification target: <code>npm test</code>, <code>npm run build</code>, Electron portable <code>GuildManager_v1.1.95_portable.exe</code>.</li>
+</ul>
+<hr>
+<h2>2026-06-30 v1.2.0 Advisory Verification</h2>
+<ul>
+<li>Quest risk, candidate recommendation, equipment recommendation hints, and management priority strip were verified as the current v1.2.0 improvement batch.</li>
+<li>Validation: <code>npm test</code> passed 7 tests; <code>npm run build</code> passed; Electron portable packaging produced <code>GuildManager_v1.2.0_portable.exe</code>.</li>
+<li>Next recommended QA: visual stress check for 100+ mercenaries and 3x Korean text in dashboard and equipment modal.</li>
+</ul>
+<h2>2026-06-30 v1.3.1</h2>
+<ul>
+<li>첫 파견 90초 흐름을 개선하는 <code>추천 행동</code> 배너를 추가했다.</li>
+<li>첫 계약 전 자동 힌트 카드가 계약/파견 CTA를 막지 않도록 억제 조건을 추가했다.</li>
+<li>업그레이드 재료 표기를 목재/석재/문장 중심으로 한국어화했다.</li>
+<li>온보딩 추천 유틸과 4개 동작 회귀 테스트를 추가했다.</li>
+</ul>
+<h2>2026-06-30 v1.4.1</h2>
+<ul>
+<li>전술 리플레이에 <code>판단 근거</code> 스트립을 추가했다.</li>
+<li>전력 우위/경고, 함정 대응 여부, 보상 지점을 한국어 인사이트 카드로 표시한다.</li>
+<li>리플레이 이벤트 문구와 적/함정 이름을 한국어화했다.</li>
+<li>전술 리플레이 인사이트 회귀 테스트를 추가했다.</li>
+</ul>
+<section>
+  <h2>2026-07-01 v1.4.1 Visual QA Recovery</h2>
+  <ul>
+    <li>장비 모달의 긴 장비명, 추천 힌트, 대량 인벤토리 상황에서 버튼 줄바꿈과 슬롯별 스크롤 방어를 추가했다.</li>
+    <li>방 시설과 업그레이드 자원 타입은 이전 저장 데이터와 호환되도록 optional 필드로 정리했다.</li>
+    <li>검증: npm test 9개 통과, npm run build 통과, Electron portable 재생성 및 루트/release/Drive 복사 완료.</li>
+  </ul>
+</section>
+</body>
+</html>

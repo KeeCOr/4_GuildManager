@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GuildManager 기획서</title>
+  <style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.65;max-width:1040px;margin:0 auto;padding:40px 24px;color:#20242a;background:#fafafa}h1{font-size:34px;margin:0 0 20px}h2{font-size:24px;margin-top:34px;border-bottom:1px solid #ddd;padding-bottom:6px}h3{font-size:18px;margin-top:24px;color:#32435f}p,li,td,th{font-size:15px}li{margin:5px 0}code{background:#fff;border:1px solid #ddd;border-radius:4px;padding:1px 4px}pre{white-space:pre-wrap;background:#fff;border:1px solid #ddd;border-radius:8px;padding:10px 12px;overflow:auto}pre code{border:0;padding:0;background:transparent}table{border-collapse:collapse;width:100%;background:#fff;margin:12px 0}td,th{border:1px solid #ddd;padding:8px;text-align:left;vertical-align:top}figure{margin:18px 0;background:#fff;border:1px solid #ddd;border-radius:8px;padding:12px}img{max-width:100%;height:auto;display:block;border-radius:6px}figcaption{font-size:13px;color:#626b76;margin-top:8px}</style>
+</head>
+<body>
+<h1>GuildManager 기획서</h1>
+<p>문제 정의: 방치형 성장만으로는 부족한 플레이어가 파티 조합, 장비, 퀘스트 위험도를 직접 조율하고 싶어 한다.</p>
+<h2>게임 소개</h2>
+<p>용병을 고용하고 퀘스트와 장비, 길드 경제를 운영하는 중세 길드 매니지먼트.</p>
+<p>GuildManager의 핵심 매력은 한 번의 선택이 다음 장면의 위험도, 보상, 성장 방향으로 이어지는 구조다. 이 문서는 처음 보는 사람에게 게임의 재미와 현재 방향을 빠르게 소개하기 위한 단일 기획서이며, 세부 변경 이력은 별도 업데이트 내역서에서 관리한다.</p>
+<h2>한 줄 소개</h2>
+<p>용병을 고용하고 퀘스트와 장비, 길드 경제를 운영하는 중세 길드 매니지먼트.</p>
+<h2>핵심 루프</h2>
+<p>유저가 현재 전장의 정보를 읽고 선택을 하면 전투/운영 결과가 갱신되고, 그 보상과 손실 때문에 다시 다음 선택을 준비한다.</p>
+<h2>게임 플레이 예시</h2>
+<ul>
+<li>1단계: 플레이어가 GuildManager의 현재 목표, 보유 자원, 즉시 대응해야 할 위험을 확인한다.</li>
+<li>2단계: 카드, 유닛, 배치, 명령, 이동 중 현재 상황에 맞는 핵심 행동을 선택한다.</li>
+<li>3단계: 선택 결과가 전투, 운영, 보상, 손실로 즉시 갱신되고 다음 판단의 근거가 된다.</li>
+<li>4단계: 획득한 보상이나 변화한 상태를 바탕으로 다음 선택을 준비하며 핵심 루프를 반복한다.</li>
+<li>플레이 감각: 짧은 세션 안에서 상황 파악, 의미 있는 선택, 즉각적인 피드백, 다음 목표 제시가 끊기지 않는 흐름을 지향한다.</li>
+</ul>
+<h2>핵심 재미</h2>
+<ul>
+<li>읽기 쉬운 상황 판단: 지금 위험한 요소와 얻을 수 있는 보상이 한눈에 들어온다.</li>
+<li>직접적인 선택 피드백: 선택 직후 전투, 점수, 자원, 성장 상태가 변해 손맛을 만든다.</li>
+<li>누적되는 성장감: 반복 플레이가 단순 재시작이 아니라 다음 전략의 재료로 이어진다.</li>
+</ul>
+<h2>주요 시스템</h2>
+<ul>
+<li>핵심 선택 시스템: 현재 국면에서 가능한 행동을 5개 이하의 명확한 선택지로 제시한다.</li>
+<li>위험/보상 피드백: 행동 전후의 이득, 손실, 위협 변화를 빠르게 보여준다.</li>
+<li>성장과 해금: 세션 결과가 능력, 카드, 유닛, 건물, 장비, 스테이지 등 다음 플레이의 선택지를 넓힌다.</li>
+<li>상태별 UX: 로딩, 빈 상태, 오류, 많은 데이터, 긴 텍스트 상황에서도 레이아웃이 무너지지 않도록 관리한다.</li>
+<li>실행 안정성: 테스트와 빌드 산출물을 기준으로 현재 플레이 가능한 범위를 계속 확인한다.</li>
+</ul>
+<h2>게임 구성과 규칙 (GDD 통합)</h2>
+<ul>
+<li>통합 기준 문서: <code>superpowers/specs/2026-04-21-refactor-design.md</code>, <code>superpowers/specs/2026-05-06-equipment-merchant-dungeon-design.md</code>, <code>superpowers/specs/2026-06-17-living-room-mercenaries-design.md</code></li>
+<li>작성 기준: 16_PokerStrike_GDD처럼 화면 구조, 핵심 시스템, 진행/승패 규칙, UI/HUD, 미결 항목을 한 문서에서 바로 읽을 수 있게 정리한다.</li>
+</ul>
+<h3>화면/플레이 구조</h3>
+<ul>
+<li><strong>1. 파일 구조 (기능별 폴더)</strong> (superpowers/specs/2026-04-21-refactor-design.md)</li>
+</ul>
+<p>  - MercCard.tsx # 용병 카드 UI</p>
+<p>  - QuestCard.tsx # 퀘스트 카드 UI</p>
+<p>  - BuildingPanel.tsx # 건물 관리 패널</p>
+<p>  - StatRadar.tsx # (기존 유지)</p>
+<p>  - CondBar.tsx # 컨디션 바</p>
+<p>  - SaveSlotScreen.tsx # 슬롯 선택 화면</p>
+<p>  - useGameLoop.ts # 실시간 타이머 (퀘스트 완료 체크)</p>
+<ul>
+<li><strong>데이터 구조</strong> (superpowers/specs/2026-04-21-refactor-design.md)</li>
+</ul>
+<p>  - 코드 예시는 원본 설계 문서를 참조한다.</p>
+<p>  - interface SaveSlot {</p>
+<p>  - slotId: 1 | 2 | 3</p>
+<p>  - savedAt: number // Unix timestamp ms</p>
+<p>  - day: number // 현재 날짜 (슬롯 미리보기용)</p>
+<p>  - fame: number // 명성 (슬롯 미리보기용)</p>
+<p>  - mercCount: number // 용병 수 (슬롯 미리보기용)</p>
+<ul>
+<li><strong>동작 흐름</strong> (superpowers/specs/2026-04-21-refactor-design.md)</li>
+</ul>
+<p>  1. 앱 실행 → <code>SaveSlotScreen</code> 표시</p>
+<p>  2. 빈 슬롯 클릭 → 새 게임 시작</p>
+<p>  3. 저장된 슬롯 클릭 → 해당 상태 불러와 게임 진입</p>
+<p>  4. 게임 중 상태 변경 시 → 디바운스 1초 후 해당 슬롯 자동저장</p>
+<p>  5. 게임 내 메뉴 → &quot;슬롯 변경 / 새로 시작&quot; 버튼으로 슬롯 화면 복귀</p>
+<p>  6. 슬롯 화면에서 슬롯별 삭제 버튼 제공</p>
+<h3>핵심 시스템</h3>
+<ul>
+<li><strong>목표</strong> (superpowers/specs/2026-04-21-refactor-design.md)</li>
+</ul>
+<p>  - App.tsx God Component 해소, localStorage 저장 슬롯 시스템 추가, 버그 수정 및 타입 안전성 강화, 빌드 산출물 git 정리.</p>
+<ul>
+<li><strong>3-2. 타입 안전성 강화</strong> (superpowers/specs/2026-04-21-refactor-design.md)</li>
+</ul>
+<p>  - <code>types.ts</code>에 <code>RoomId = '훈련소' | '길드마스터룸' | '식당'</code> 추가, <code>Mercenary.room</code>에 적용</p>
+<p>  - <code>weaponOf()</code> 헬퍼에 fallback 보장 (undefined 반환 → DEFAULT_WEAPON으로 폴백)</p>
+<p>  - <code>BuildingId</code>와 room 시스템 혼재 주석 정리</p>
+<ul>
+<li><strong>Type Definitions</strong> (superpowers/specs/2026-05-06-equipment-merchant-dungeon-design.md)</li>
+</ul>
+<p>  - type EquipSlot = 'weapon' | 'head' | 'body' | 'accessory'</p>
+<p>  - type EquipGrade = 'D' | 'C' | 'B' | 'A' | 'S'</p>
+<p>  - interface PassiveEffect {</p>
+<p>| 'quest_success_morale'     // 퀘스트 성공 시 사기 +N</p>
+<p>| 'same_element_death_resist'// 속성 일치 퀘스트에서 사망률 -N%</p>
+<p>| 'trap_bonus'               // 함정 퀘스트 성공률 +N%</p>
+<p>| 'survival_bonus'           // 생존율 +N (추가)</p>
+<p>| 'morale_recovery_on_kill'  // 퀘스트 성공 시 사기 회복 +N</p>
+<p>| 'guild_fame_bonus'         // 퀘스트 성공 명성 +N</p>
+<p>  - value: number</p>
+<ul>
+<li><strong>Item Pool — <code>src/data/equipment.ts</code></strong> (superpowers/specs/2026-05-06-equipment-merchant-dungeon-design.md)</li>
+</ul>
+<p>  - 슬롯별 5종 × 5등급 = 100종. 세트는 4종 정의.</p>
+<table>
+<tr><th>세트명</th><th>친화 직업</th><th>2세트 효과</th><th>3세트 효과</th></tr>
+<tr><td>그림자 세트</td><td>도적</td><td>함정해제 +8</td><td>암흑 퀘 성공률 +12%</td></tr>
+<tr><td>철벽 세트</td><td>전사</td><td>생존율 +10</td><td>사망 위험 -20%</td></tr>
+<tr><td>현자 세트</td><td>마법사</td><td>전력 +15</td><td>속성 일치 시 추가 명성 +3</td></tr>
+<tr><td>자연 세트</td><td>궁수/성직자</td><td>사기 +10</td><td>퀘스트 성공 사기 회복 +5</td></tr>
+</table>
+<h3>진행/승패 규칙</h3>
+<ul>
+<li><strong>MerchantPanel.tsx</strong> (superpowers/specs/2026-05-06-equipment-merchant-dungeon-design.md)</li>
+</ul>
+<p>  - ┌──────────────────────────────────────┐</p>
+<p>  - │ 🛒 행상인 [출발까지: 7분 23초] │</p>
+<p>  - ├──────────────────────────────────────┤</p>
+<p>  - │ [그림자 단검 A] │</p>
+<p>  - │ 공격 +12 / 함정 +8 │</p>
+<p>  - │ 패시브: 암흑 퀘 성공률 +10% │</p>
+<p>  - │ 420G [구매] │</p>
+<h3>UI/HUD/피드백</h3>
+<ul>
+<li><strong>3-3. 릴리스 파일 git 정리</strong> (superpowers/specs/2026-04-21-refactor-design.md)</li>
+</ul>
+<p>  - <code>.gitignore</code>에 <code>release/</code> 추가 (빌드 산출물 추적 제외)</p>
+<p>  - <code>git rm --cached</code>로 기존 추적 중인 release 파일 제거</p>
+<p>  - 삭제된 <code>GM-v1.1.0.html</code>, <code>guild-manager-v1.1.0.html</code> 함께 정리 커밋</p>
+<ul>
+<li><strong>Equipment, Merchant, Dungeon System Design</strong> (superpowers/specs/2026-05-06-equipment-merchant-dungeon-design.md)</li>
+</ul>
+<p>  - <strong>Date:</strong> 2026-05-06</p>
+<p>  - <strong>Project:</strong> 4_GM — 아이언홀드 용병단 길드</p>
+<p>  - <strong>Status:</strong> Approved</p>
+<ul>
+<li><strong>New Files</strong> (superpowers/specs/2026-05-06-equipment-merchant-dungeon-design.md)</li>
+</ul>
+<p>  - equipment.ts # Item pool (~100 items), set definitions</p>
+<p>  - dungeons.ts # Dungeon name pool, floor scaling</p>
+<p>  - EquipmentModal.tsx # Per-merc equipment management UI</p>
+<p>  - MerchantPanel.tsx # Visiting merchant modal</p>
+<p>  - DungeonPanel.tsx # Dungeon progress + dispatch UI</p>
+<p>  - useMerchant.ts # Merchant arrival/departure timing</p>
+<p>  - useDungeon.ts # Dungeon state management</p>
+<h3>구현 메모/미결</h3>
+<ul>
+<li><strong>Dungeon Trigger</strong> (superpowers/specs/2026-05-06-equipment-merchant-dungeon-design.md)</li>
+</ul>
+<p>  - 퀘스트 완료 후 드롭 체크와 별도로 던전 발생 판정:</p>
+<table>
+<tr><th>퀘스트 티어</th><th>확률</th><th>입장 가능 층</th></tr>
+<tr><td>Lv1</td><td>3%</td><td>1~3층</td></tr>
+<tr><td>Lv2</td><td>5%</td><td>2~5층</td></tr>
+<tr><td>Lv3</td><td>8%</td><td>4~7층</td></tr>
+<tr><td>Lv4</td><td>12%</td><td>6~10층</td></tr>
+</table>
+<ul>
+<li><strong>useDungeon.ts</strong> (superpowers/specs/2026-05-06-equipment-merchant-dungeon-design.md)</li>
+</ul>
+<p>  - 던전 상태 관리, 층 완료 판정 (processCompletions에서 훅 호출).</p>
+<p>  - SaveSlotData에 <code>activeDungeon: ActiveDungeon | null</code> 포함.</p>
+<h2>MVP 가설</h2>
+<table>
+<tr><th>기능</th><th>검증할 가설</th><th>검증 방법</th></tr>
+<tr><td>핵심 전투/운영 루프</td><td>플레이어는 한 판 안에서 선택 결과를 이해하면 다음 판을 자발적으로 시작한다.</td><td>1회 플레이 후 재시작률 60% 이상</td></tr>
+<tr><td>위험/보상 표시</td><td>위험과 보상이 동시에 보이면 선택 시간이 줄고 납득도가 오른다.</td><td>주요 선택 평균 8초 이내, 결과 불만 피드백 20% 이하</td></tr>
+<tr><td>성장 보상</td><td>보상이 다음 전략을 바꾸면 반복 플레이 피로가 낮아진다.</td><td>3판 내 서로 다른 빌드 선택률 50% 이상</td></tr>
+</table>
+<h2>레퍼런스 분석</h2>
+<ul>
+<li>장르 기준 레퍼런스는 한 판 시작까지 3단계 이내, 첫 의미 있는 선택까지 30초 이내가 목표다.</li>
+<li>적용 교훈: 규칙 설명보다 먼저 선택 가능한 상황을 보여주고, 결과 화면에서 다음 판의 개선 포인트를 바로 제안한다.</li>
+</ul>
+<h2>현재 개발 상태 예상 수치</h2>
+<ul>
+<li>완성 목표 대비 구현 체감도: 약 82%</li>
+<li>첫 세션에서 핵심 루프가 전달될 가능성: 약 88%</li>
+<li>UI/리소스 일관성 체감: 약 78%</li>
+<li>콘텐츠와 반복 플레이 분량 충족도: 약 78%</li>
+<li>빌드/실행 안정성 기대치: 약 90%</li>
+<li>해석 기준: 현재 문서, 최근 산출물 기록, 연결된 예시 이미지 유무를 기준으로 한 사전 추정치이며 실제 플레이 테스트 후 ±15%p 정도 보정이 필요하다.</li>
+</ul>
+<ul>
+<li>첫 세션 평균 플레이 시간 8분 이상</li>
+<li>첫 세션 내 2회차 진입률 55% 이상</li>
+<li>핵심 선택 화면에서 무응답/이탈률 15% 이하</li>
+</ul>
+<h2>현재 구현 상태</h2>
+<ul>
+<li>이 문서는 2026-06-24 기준으로 현재 플레이 방향과 구현 체감 상태를 요약한다.</li>
+<li>핵심 루프, 조작 원칙, 리소스 적용 현황, 빌드 기준은 프로젝트별 실제 구현과 산출물 기록을 기준으로 계속 보정한다.</li>
+<li>세부 변경 이력은 별도 업데이트 내역서에서 관리하고, 본 기획서는 처음 보는 사람이 현재 방향을 빠르게 이해하는 공유 문서로 유지한다.</li>
+<li>새 기능, 밸런스 변경, 리소스 교체, UX 개선이 들어가면 본문과 HTML 문서를 함께 갱신한다.</li>
+</ul>
+<h2>조작과 UX 원칙</h2>
+<ul>
+<li>주요 버튼은 44px 이상으로 유지하고, 화면당 CTA 강조색은 하나만 사용한다.</li>
+<li>버튼/선택지는 한 번에 5개 이하로 노출해 판단 부담을 줄인다.</li>
+<li>로딩, 빈 상태, 에러, 많은 데이터, 긴 텍스트 상태를 각각 별도 화면/컴포넌트로 확인한다.</li>
+<li>HUD 동일 레이어 요소는 겹치지 않게 배치하고, 겹침이 필요한 효과는 별도 depth/z-order를 쓴다.</li>
+</ul>
+<h2>적용 리소스</h2>
+<ul>
+<li>런타임에 쓰이는 대표 이미지와 UI 리소스는 프로젝트별 asset/public/Resources 경로를 기준으로 관리한다.</li>
+<li>새 이미지가 필요할 때는 프로젝트 접두어를 포함한 lowercase kebab-case 파일명을 사용한다.</li>
+<li>최종 런타임 비주얼은 PNG/WebP 등 비트맵 자산을 우선 사용하고, SVG 또는 코드 드로잉은 문서/임시 참조로만 남긴다.</li>
+</ul>
+<h2>공유용 이미지 미리보기</h2>
+<figure><img src="archive/GuildManager_gameplay_preview_v1.png" alt="GuildManager 공유용 예시 1"><figcaption>GuildManager 공유용 예시 1</figcaption></figure>
+<figure><img src="GuildManager_01_플레이예시.png" alt="GuildManager 공유용 예시 2"><figcaption>GuildManager 공유용 예시 2</figcaption></figure>
+<figure><img src="GuildManager_레퍼런스_플레이예시_구버전.png" alt="GuildManager 공유용 예시 3"><figcaption>GuildManager 공유용 예시 3</figcaption></figure>
+<ul>
+<li>docs/GuildManager_01_플레이예시.png</li>
+<li>docs/GuildManager_레퍼런스_플레이예시_구버전.png</li>
+<li>src/assets/BG/BG_Base.jpg</li>
+</ul>
+<h2>빌드, 테스트, 릴리스</h2>
+<ul>
+<li>npm test</li>
+<li>npm run build</li>
+<li>현재 문서 기준 버전: 1.1.94</li>
+</ul>
+<h2>남은 리스크와 다음 우선순위</h2>
+<ul>
+<li>첫 화면에서 게임의 목표와 다음 행동이 5초 안에 보이는지 확인한다.</li>
+<li>주요 선택의 결과 예측과 실제 결과가 어긋나는 지점을 플레이 테스트로 수집한다.</li>
+<li>기획서에 남아 있던 변경 이력성 내용은 업데이트 내역서로 계속 이동해 소개 문서의 밀도를 유지한다.</li>
+</ul>
+</body>
+</html>

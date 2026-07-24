@@ -16,6 +16,7 @@ import { useMerchant } from './hooks/useMerchant'
 import { useDungeon } from './hooks/useDungeon'
 import { getSprite } from './assets/Character/sprites'
 import { UI_ICONS } from './assets/uiIcons'
+import { deriveRoomAgents, getRoomActionLabel } from './utils/roomAgents'
 import bgBase from './assets/BG/BG_Base.jpg'
 import sceneFrontProps from './assets/BG/props/front/scene-front-props.png'
 import type { Mercenary, Quest, ActiveQuest, GuildBuildings, CampaignState, Equipment, EquipSlot, MerchantState, ActiveDungeon, ActiveExpedition, ExpeditionResult, SaveSlotData, RoomId } from './types'
@@ -863,6 +864,10 @@ function App() {
     [roomOperations, selectedRoomId]
   )
   const sceneFocus = sceneFocusId ? SCENE_FOCUS[sceneFocusId] : null
+  const roomAgents = useMemo(
+    () => deriveRoomAgents(mercs, pendingMercIds),
+    [mercs, pendingMercIds]
+  )
   const guildRank = useMemo(() => getGuildRank(state.fame), [state.fame])
   const tutorialMissions = useMemo(() => ([
     { id: 'room', text: '방을 눌러 역할 확인', done: selectedRoomId !== null },
@@ -3113,6 +3118,64 @@ function App() {
               </div>{/* end 1F wrapper */}
             </div>
           </div>
+        <div className="absolute inset-0 pointer-events-none gm-room-agent-layer" style={{ zIndex: 18 }}>
+          {roomAgents.map(({ merc, slot, delay, zIndex, facing }) => {
+            const sprite = getSprite(merc.race, merc.traits.gender, merc.class)
+            const isSelected = selectedMercId === merc.id
+            const spriteGlow = merc.grade === 'S'
+              ? 'drop-shadow(0 0 8px rgba(232,121,249,0.95)) drop-shadow(0 0 18px rgba(232,121,249,0.55))'
+              : merc.grade === 'A'
+              ? 'drop-shadow(0 0 7px rgba(251,191,36,0.9)) drop-shadow(0 0 14px rgba(251,191,36,0.5))'
+              : merc.grade === 'B'
+              ? 'drop-shadow(0 0 5px rgba(52,211,153,0.7))'
+              : 'none'
+            return (
+              <button
+                key={`room-agent-${merc.id}`}
+                draggable
+                type="button"
+                className={`gm-room-agent ${slot.wander} ${isSelected ? 'gm-room-agent-selected' : ''}`}
+                style={{
+                  left: `${slot.left}%`,
+                  top: `${slot.top}%`,
+                  zIndex,
+                  ['--agent-scale' as string]: slot.scale,
+                  ['--agent-delay' as string]: `${delay}s`,
+                  ['--agent-facing' as string]: facing,
+                }}
+                title={`${merc.name} - ${getRoomActionLabel(slot)}`}
+                onClick={e => {
+                  e.stopPropagation()
+                  setSelectedMercId(isSelected ? null : merc.id)
+                  setRoomMercPreview(merc)
+                }}
+                onDragStart={e => {
+                  e.dataTransfer.setData('roomMercId', merc.id)
+                  e.dataTransfer.setData('mercId', merc.id)
+                  setDraggingMercId(merc.id)
+                  setSelectedMercId(merc.id)
+                }}
+                onDragEnd={() => { setDraggingMercId(null); setDropTargetRoom(null) }}
+              >
+                <span className="gm-room-agent-label">{getRoomActionLabel(slot)}</span>
+                <span className="gm-room-agent-shadow" />
+                <span className={`gm-room-agent-body ${slot.animation}`} style={{ animationDelay: `${delay}s` }}>
+                  {sprite ? (
+                    <img
+                      src={sprite}
+                      alt=""
+                      className="gm-room-agent-sprite"
+                      style={{ filter: spriteGlow }}
+                      draggable={false}
+                    />
+                  ) : (
+                    <MercAvatar m={merc} size={54} />
+                  )}
+                </span>
+              </button>
+            )
+          })}
+        </div>
         <div className="absolute inset-0 pointer-events-none" style={{
           zIndex: 24,
           backgroundImage: `url(${sceneFrontProps})`,

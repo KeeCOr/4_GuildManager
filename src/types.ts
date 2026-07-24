@@ -5,6 +5,10 @@ export type MercenaryGrade = 'D' | 'C' | 'B' | 'A' | 'S'
 export type MercenaryStatus = '대기중' | '파견중' | '부상' | '영혼'
 export type BuildingId = 'hall' | 'barracks' | 'training' | 'tavern' | 'infirmary'
 export type RoomId = '훈련소' | '길드마스터룸' | '식당'
+export type RoomFacilityState = Record<RoomId, Record<string, number>>
+export type UpgradeResourceId = 'wood' | 'stone' | 'crest'
+export type UpgradeResourceState = Record<UpgradeResourceId, number>
+export type UpgradeResourceCost = Partial<Record<UpgradeResourceId, number>>
 export type EquipSlot = 'weapon' | 'head' | 'body' | 'accessory'
 export type EquipGrade = 'D' | 'C' | 'B' | 'A' | 'S'
 
@@ -236,6 +240,8 @@ export interface SaveSlotData {
   nextMoraleDropAt: number
   questPool: string[]
   roomLevels: Record<string, number>
+  roomFacilities?: RoomFacilityState
+  upgradeResources?: UpgradeResourceState
   completedQuestIds: string[]
   guildInventory: Equipment[]
   merchantState: MerchantState | null

@@ -28,9 +28,9 @@ button {
   scrollbar-width: none;
 }
 
-/* ── 용병 활동 애니메이션 ─────────────────────────────── */
+/* Mercenary activity animations */
 
-/* 길드마스터룸: 고개를 살짝 끄덕이며 보고하는 느낌 */
+/* Guild master room: subtle reporting motion */
 @keyframes gm-report {
   0%, 100% { transform: translateY(0) rotate(0deg); }
   20%       { transform: translateY(-3px) rotate(-1.5deg); }
@@ -38,7 +38,7 @@ button {
   75%       { transform: translateY(-2px) rotate(-0.5deg); }
 }
 
-/* 훈련소: 빠른 좌우 공격·훈련 모션 */
+/* Training room: quick side-to-side training motion */
 @keyframes gm-training {
   0%, 100% { transform: translateX(0)    rotate(0deg)    scaleX(1); }
   15%       { transform: translateX(-5px) rotate(-4deg)   scaleX(0.96); }
@@ -48,7 +48,7 @@ button {
   80%       { transform: translateX(-1px) rotate(-1deg); }
 }
 
-/* 식당: 느긋하게 위아래로 몸을 흔들며 식사 */
+/* Dining room: slow up-and-down eating motion */
 @keyframes gm-eating {
   0%, 100% { transform: translateY(0)    scaleY(1);    }
   35%       { transform: translateY(-5px) scaleY(1.02); }
@@ -239,6 +239,48 @@ button {
   box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.28), 0 0 34px rgba(56, 189, 248, 0.24) !important;
 }
 
+
+.gm-panel-shell :where(p, span, h1, h2, h3, button),
+.gm-modal-frame :where(p, span, h1, h2, h3, button),
+.gm-float-card :where(p, span, h1, h2, h3, button),
+.gm-card-chrome :where(p, span, h1, h2, h3, button) {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.gm-panel-shell.fixed,
+.gm-modal-frame.fixed,
+.gm-float-card.fixed {
+  max-width: calc(100vw - 1rem);
+  max-height: calc(100dvh - 1rem);
+}
+
+.gm-float-card.fixed {
+  overflow-y: auto;
+}
+
+.gm-float-card.fixed.w-72 {
+  width: min(18rem, calc(100vw - 3rem)) !important;
+}
+
+.gm-panel-shell.absolute {
+  max-width: calc(100vw - 1.5rem);
+}
+
+.gm-panel-shell.fixed.left-2.bottom-2 {
+  width: min(620px, max(360px, 40vw)) !important;
+  max-width: calc(100vw - 1rem);
+  max-height: calc(100dvh - 4rem);
+}
+
+.truncate[style*="max-width: 92"] {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  line-height: 1.15;
+}
+
 .gm-room-badge {
   min-width: 34px;
   text-align: center;
@@ -257,7 +299,7 @@ button {
   will-change: transform;
 }
 
-/* ── 던전 클리어 연출 ─────────────────────────────── */
+/* Dungeon clear effects */
 
 @keyframes dungeon-clear-text {
   0%   { transform: scale(0.8); opacity: 0; }
@@ -288,4 +330,216 @@ button {
 
 .dungeon-reward-pulse {
   animation: dungeon-reward-pulse 1.4s ease-in-out infinite;
+}
+/* Living mercenaries inside the guild scene */
+.gm-room-agent-layer {
+  contain: layout paint;
+}
+
+.gm-room-agent {
+  --agent-scale: 0.8;
+  --agent-delay: 0s;
+  --agent-facing: 1;
+  position: absolute;
+  width: 58px;
+  height: 82px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  pointer-events: auto;
+  cursor: grab;
+  transform: translate(-50%, -100%) scale(var(--agent-scale));
+  transform-origin: 50% 100%;
+  animation-duration: 6.8s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-delay: var(--agent-delay);
+  filter: drop-shadow(0 10px 10px rgba(0, 0, 0, 0.45));
+}
+
+.gm-room-agent:active {
+  cursor: grabbing;
+}
+
+.gm-room-agent:hover,
+.gm-room-agent:focus-visible,
+.gm-room-agent-selected {
+  outline: none;
+  filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.42)) drop-shadow(0 12px 12px rgba(0, 0, 0, 0.48));
+}
+
+.gm-room-agent-label {
+  position: absolute;
+  left: 50%;
+  top: -16px;
+  transform: translateX(-50%);
+  max-width: 92px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  color: rgba(255, 246, 220, 0.94);
+  background: rgba(5, 5, 8, 0.66);
+  border: 1px solid rgba(235, 190, 95, 0.22);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.15;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  min-width: 0;
+  max-width: min(92px, calc(100vw - 1rem));
+  opacity: 0;
+  transition: opacity 160ms ease, transform 160ms ease;
+  pointer-events: none;
+}
+
+.gm-room-agent:hover .gm-room-agent-label,
+.gm-room-agent:focus-visible .gm-room-agent-label,
+.gm-room-agent-selected .gm-room-agent-label {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-2px);
+}
+
+.gm-room-agent-shadow {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 34px;
+  height: 8px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  filter: blur(5px);
+}
+
+.gm-room-agent-body {
+  position: absolute;
+  left: 50%;
+  bottom: 2px;
+  width: 58px;
+  height: 78px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  transform: translateX(-50%) scaleX(var(--agent-facing));
+  transform-origin: 50% 100%;
+  animation-duration: 2.4s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+.gm-room-agent-sprite {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.gm-agent-wander-a { animation-name: gm-agent-wander-a; }
+.gm-agent-wander-b { animation-name: gm-agent-wander-b; }
+.gm-agent-wander-c { animation-name: gm-agent-wander-c; }
+.gm-agent-report { animation-name: gm-agent-report; }
+.gm-agent-training { animation-name: gm-agent-training; animation-duration: 1.15s; }
+.gm-agent-dining { animation-name: gm-agent-dining; animation-duration: 2s; }
+
+@keyframes gm-agent-wander-a {
+  0%, 100% { transform: translate(-50%, -100%) scale(var(--agent-scale)); }
+  28% { transform: translate(calc(-50% - 8px), calc(-100% - 2px)) scale(var(--agent-scale)); }
+  58% { transform: translate(calc(-50% + 6px), calc(-100% + 1px)) scale(var(--agent-scale)); }
+  78% { transform: translate(calc(-50% + 2px), calc(-100% - 4px)) scale(var(--agent-scale)); }
+}
+
+@keyframes gm-agent-wander-b {
+  0%, 100% { transform: translate(-50%, -100%) scale(var(--agent-scale)); }
+  22% { transform: translate(calc(-50% + 7px), calc(-100% - 3px)) scale(var(--agent-scale)); }
+  52% { transform: translate(calc(-50% + 1px), calc(-100% + 2px)) scale(var(--agent-scale)); }
+  82% { transform: translate(calc(-50% - 7px), calc(-100% - 1px)) scale(var(--agent-scale)); }
+}
+
+@keyframes gm-agent-wander-c {
+  0%, 100% { transform: translate(-50%, -100%) scale(var(--agent-scale)); }
+  24% { transform: translate(calc(-50% - 4px), calc(-100% + 2px)) scale(var(--agent-scale)); }
+  48% { transform: translate(calc(-50% + 8px), calc(-100% - 3px)) scale(var(--agent-scale)); }
+  72% { transform: translate(calc(-50% - 8px), calc(-100% - 2px)) scale(var(--agent-scale)); }
+}
+
+@keyframes gm-agent-report {
+  0%, 100% { transform: translateX(-50%) scaleX(var(--agent-facing)) translateY(0) rotate(0deg); }
+  25% { transform: translateX(-50%) scaleX(var(--agent-facing)) translateY(-2px) rotate(-1.5deg); }
+  52% { transform: translateX(-50%) scaleX(var(--agent-facing)) translateY(0) rotate(1deg); }
+  74% { transform: translateX(-50%) scaleX(var(--agent-facing)) translateY(-1px) rotate(-0.6deg); }
+}
+
+@keyframes gm-agent-training {
+  0%, 100% { transform: translateX(-50%) scaleX(var(--agent-facing)) translateY(0) rotate(0deg); }
+  16% { transform: translateX(-50%) scaleX(var(--agent-facing)) translateY(-1px) rotate(-5deg); }
+  32% { transform: translateX(-50%) scaleX(var(--agent-facing)) translateY(1px) rotate(5deg); }
+  55% { transform: translateX(-50%) scaleX(var(--agent-facing)) translateY(-2px) rotate(-2deg); }
+  76% { transform: translateX(-50%) scaleX(var(--agent-facing)) translateY(0) rotate(2deg); }
+}
+
+@keyframes gm-agent-dining {
+  0%, 100% { transform: translateX(-50%) scaleX(var(--agent-facing)) translateY(0) scaleY(1); }
+  35% { transform: translateX(-50%) scaleX(var(--agent-facing)) translateY(-4px) scaleY(1.02); }
+  62% { transform: translateX(-50%) scaleX(var(--agent-facing)) translateY(-1px) scaleY(1.01); }
+}
+.gm-dashboard-priority-strip {
+  min-height: 36px;
+  max-height: 74px;
+  overflow-y: auto;
+  align-content: flex-start;
+}
+
+.gm-dashboard-priority-chip {
+  flex: 1 1 142px;
+  max-width: 220px;
+  min-height: 28px;
+  line-height: 1.15;
+}
+
+.gm-dashboard-priority-label {
+  flex: 1 1 auto;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.gm-equipment-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: min(95vw, 320px);
+}
+
+.gm-equipment-modal .gm-panel-header {
+  flex-shrink: 0;
+}
+
+.gm-equipment-equipped-slot {
+  min-height: 58px;
+}
+
+.gm-equipment-inventory {
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.gm-equipment-item-grid {
+  max-height: 172px;
+  overflow-y: auto;
+  align-content: flex-start;
+  padding-right: 2px;
+}
+
+.gm-equipment-item-button {
+  flex: 1 1 138px;
+  max-width: 100%;
+  min-height: 32px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.15;
 }

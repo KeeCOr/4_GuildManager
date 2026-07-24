@@ -1,12 +1,13 @@
 {
   "name": "medieval-mercenary-manager",
   "private": true,
-  "version": "1.1.92",
+  "version": "1.4.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test tests\\\\roomAgents.test.mjs tests\\\\onboardingAdvisor.test.mjs tests\\\\tacticalReplayInsights.test.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
