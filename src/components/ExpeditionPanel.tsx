@@ -90,6 +90,16 @@ export function ExpeditionPanel({ expedition, mercs, onClose, onClaim }: Props) 
               ))}
             </div>
             <p className="text-right text-xs mt-1.5 font-bold text-cyan-300">총 전력: {partyPower}</p>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+              <div className="rounded-lg px-3 py-2" style={{ background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.2)' }}>
+                <p style={{ color: 'rgba(170, 220, 190, 0.72)' }}>길드원 변화</p>
+                <p className="mt-0.5 font-bold text-emerald-300">평균 컨디션 {Math.round(assigned.reduce((sum, merc) => sum + merc.condition, 0) / Math.max(1, assigned.length))}</p>
+              </div>
+              <div className="rounded-lg px-3 py-2" style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.24)' }}>
+                <p style={{ color: 'rgba(250, 210, 150, 0.72)' }}>다음 배치 리스크</p>
+                <p className="mt-0.5 font-bold text-amber-300">다음 배치 전 컨디션 점검</p>
+              </div>
+            </div>
           </div>
 
           {/* Rankings */}
