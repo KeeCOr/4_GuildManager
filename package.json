@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "node --test tests\\\\roomAgents.test.mjs tests\\\\onboardingAdvisor.test.mjs tests\\\\tacticalReplayInsights.test.mjs"
+    "test": "node --test tests\\\\roomAgents.test.mjs tests\\\\onboardingAdvisor.test.mjs tests\\\\tacticalReplayInsights.test.mjs",
+    "build:steam": "node scripts/build-release.js",
+    "dist:steam": "node scripts/build-release.js",
+    "electron": "electron electron/main.js"
   },
   "dependencies": {
     "react": "^18.3.1",
