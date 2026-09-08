@@ -7,11 +7,17 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "node --test tests\\\\roomAgents.test.mjs tests\\\\onboardingAdvisor.test.mjs tests\\\\tacticalReplayInsights.test.mjs"
+    "test": "node --test tests\\\\roomAgents.test.mjs tests\\\\onboardingAdvisor.test.mjs tests\\\\tacticalReplayInsights.test.mjs",
+    "build:steam": "node scripts/build-release.js",
+    "dist:steam": "node scripts/build-release.js",
+    "electron": "electron electron/main.js"
   },
   "dependencies": {
+    "immer": "^11.1.18",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "zod": "^4.5.4",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",
