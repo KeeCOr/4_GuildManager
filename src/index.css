@@ -12,7 +12,7 @@ html, body, #root {
 
 body {
   @apply bg-slate-950 text-slate-100 antialiased;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: Pretendard, "Noto Sans KR", "Malgun Gothic", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 button {
@@ -58,12 +58,16 @@ button {
 .gm-modal-frame {
   position: relative;
   isolation: isolate;
-  background-image:
-    url("./assets/UI/chrome/modal-frame.png"),
-    linear-gradient(180deg, rgba(24, 19, 36, 0.96), rgba(10, 8, 18, 0.98));
-  background-size: 100% 100%, 100% 100%;
+  background-image: linear-gradient(180deg, rgba(24, 19, 36, 0.96), rgba(10, 8, 18, 0.98));
   background-position: center;
   background-repeat: no-repeat;
+  border-style: solid;
+  border-width: 1px;
+  border-color: rgba(214, 166, 82, 0.28);
+  border-image-source: url("./assets/UI/chrome/modal-frame.png");
+  border-image-slice: 96 fill;
+  border-image-width: 22px;
+  border-image-repeat: stretch;
   box-shadow:
     0 20px 80px rgba(0, 0, 0, 0.45),
     0 0 32px rgba(180, 120, 45, 0.14);
@@ -93,11 +97,15 @@ button {
 .gm-button-primary {
   position: relative;
   overflow: hidden;
-  background-image:
-    url("./assets/UI/chrome/button-primary.png"),
-    linear-gradient(180deg, rgba(120, 76, 18, 0.38), rgba(56, 35, 12, 0.7));
-  background-size: 100% 100%, 100% 100%;
+  background-image: linear-gradient(180deg, rgba(120, 76, 18, 0.38), rgba(56, 35, 12, 0.7));
   background-position: center;
+  border-style: solid;
+  border-width: 1px;
+  border-color: rgba(232, 190, 104, 0.28);
+  border-image-source: url("./assets/UI/chrome/button-primary.png");
+  border-image-slice: 48 fill;
+  border-image-width: 12px;
+  border-image-repeat: stretch;
   box-shadow: inset 0 1px rgba(255, 232, 160, 0.18), 0 0 16px rgba(245, 158, 11, 0.08);
 }
 
@@ -109,12 +117,15 @@ button {
 .gm-button-chrome {
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(232, 190, 104, 0.28);
-  background-image:
-    url("./assets/UI/chrome/button-primary.png"),
-    linear-gradient(180deg, rgba(52, 38, 22, 0.96), rgba(18, 14, 16, 0.92));
-  background-size: 100% 100%, 100% 100%;
+  border-style: solid;
+  border-width: 1px;
+  border-color: rgba(232, 190, 104, 0.28);
+  background-image: linear-gradient(180deg, rgba(52, 38, 22, 0.96), rgba(18, 14, 16, 0.92));
   background-position: center;
+  border-image-source: url("./assets/UI/chrome/button-primary.png");
+  border-image-slice: 48 fill;
+  border-image-width: 12px;
+  border-image-repeat: stretch;
   box-shadow:
     inset 0 1px rgba(255, 238, 180, 0.18),
     0 8px 22px rgba(0, 0, 0, 0.36);
@@ -132,22 +143,29 @@ button {
 .gm-button-muted {
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background-image:
-    url("./assets/UI/chrome/slot-frame.png"),
-    linear-gradient(180deg, rgba(30, 34, 44, 0.86), rgba(10, 12, 18, 0.88));
-  background-size: 100% 100%, 100% 100%;
+  border-style: solid;
+  border-width: 1px;
+  border-color: rgba(255, 255, 255, 0.1);
+  background-image: linear-gradient(180deg, rgba(30, 34, 44, 0.86), rgba(10, 12, 18, 0.88));
   background-position: center;
+  border-image-source: url("./assets/UI/chrome/slot-frame.png");
+  border-image-slice: 48 fill;
+  border-image-width: 11px;
+  border-image-repeat: stretch;
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.08), 0 8px 20px rgba(0, 0, 0, 0.28);
 }
 
 .gm-panel-shell {
   position: relative;
   isolation: isolate;
-  background:
-    url("./assets/UI/chrome/modal-frame.png") center / 100% 100% no-repeat,
-    linear-gradient(180deg, rgba(16, 14, 24, 0.98), rgba(5, 5, 12, 0.98));
-  border: 1px solid rgba(214, 166, 82, 0.28);
+  background: linear-gradient(180deg, rgba(16, 14, 24, 0.98), rgba(5, 5, 12, 0.98));
+  border-style: solid;
+  border-width: 1px;
+  border-color: rgba(214, 166, 82, 0.28);
+  border-image-source: url("./assets/UI/chrome/modal-frame.png");
+  border-image-slice: 96 fill;
+  border-image-width: 22px;
+  border-image-repeat: stretch;
   box-shadow:
     0 16px 48px rgba(0, 0, 0, 0.42),
     inset 0 1px rgba(255, 235, 170, 0.08);
@@ -171,49 +189,66 @@ button {
 .gm-card-chrome {
   position: relative;
   overflow: hidden;
-  background-image:
-    url("./assets/UI/chrome/slot-frame.png"),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018));
-  background-size: 100% 100%, 100% 100%;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018));
   background-position: center;
-  border: 1px solid rgba(214, 166, 82, 0.18);
+  border-style: solid;
+  border-width: 1px;
+  border-color: rgba(214, 166, 82, 0.18);
+  border-image-source: url("./assets/UI/chrome/slot-frame.png");
+  border-image-slice: 48 fill;
+  border-image-width: 11px;
+  border-image-repeat: stretch;
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.055);
 }
 
 .gm-float-card {
-  background-image:
-    url("./assets/UI/chrome/toast-frame.png"),
-    linear-gradient(180deg, rgba(58, 38, 20, 0.9), rgba(12, 9, 12, 0.92));
-  background-size: 100% 100%, 100% 100%;
+  background-image: linear-gradient(180deg, rgba(58, 38, 20, 0.9), rgba(12, 9, 12, 0.92));
   background-position: center;
-  border: 1px solid rgba(214, 166, 82, 0.25);
+  border-style: solid;
+  border-width: 1px;
+  border-color: rgba(214, 166, 82, 0.25);
+  border-image-source: url("./assets/UI/chrome/toast-frame.png");
+  border-image-slice: 48 fill;
+  border-image-width: 14px;
+  border-image-repeat: stretch;
   box-shadow: 0 12px 34px rgba(0, 0, 0, 0.38);
 }
 
 .gm-resource-pill {
-  background-image:
-    url("./assets/UI/chrome/slot-frame.png"),
-    linear-gradient(180deg, rgba(24, 24, 32, 0.86), rgba(8, 8, 12, 0.84));
-  background-size: 100% 100%, 100% 100%;
-  border: 1px solid rgba(214, 166, 82, 0.14);
+  background-image: linear-gradient(180deg, rgba(24, 24, 32, 0.86), rgba(8, 8, 12, 0.84));
+  border-style: solid;
+  border-width: 1px;
+  border-color: rgba(214, 166, 82, 0.14);
+  border-image-source: url("./assets/UI/chrome/slot-frame.png");
+  border-image-slice: 48 fill;
+  border-image-width: 10px;
+  border-image-repeat: stretch;
 }
 
 .gm-slot-frame {
   position: relative;
   overflow: hidden;
-  background-image:
-    url("./assets/UI/chrome/slot-frame.png"),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.025));
-  background-size: 100% 100%, 100% 100%;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.025));
   background-position: center;
+  border-style: solid;
+  border-width: 1px;
+  border-color: rgba(214, 166, 82, 0.18);
+  border-image-source: url("./assets/UI/chrome/slot-frame.png");
+  border-image-slice: 48 fill;
+  border-image-width: 11px;
+  border-image-repeat: stretch;
 }
 
 .gm-toast-frame {
-  background-image:
-    url("./assets/UI/chrome/toast-frame.png"),
-    linear-gradient(180deg, rgba(80, 56, 28, 0.62), rgba(22, 16, 14, 0.82));
-  background-size: 100% 100%, 100% 100%;
+  background-image: linear-gradient(180deg, rgba(80, 56, 28, 0.62), rgba(22, 16, 14, 0.82));
   background-position: center;
+  border-style: solid;
+  border-width: 1px;
+  border-color: rgba(214, 166, 82, 0.22);
+  border-image-source: url("./assets/UI/chrome/toast-frame.png");
+  border-image-slice: 48 fill;
+  border-image-width: 14px;
+  border-image-repeat: stretch;
 }
 
 .gm-room-surface {

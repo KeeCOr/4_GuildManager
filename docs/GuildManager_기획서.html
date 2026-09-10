@@ -16,13 +16,14 @@
     hr{border:none;border-top:1px solid #ddd;margin:28px 0}
     blockquote{border-left:4px solid #ddd;margin:0;padding:8px 16px;color:#555;background:#f9f9f9;border-radius:0 8px 8px 0}
     code{background:#f0f0f0;border-radius:4px;padding:2px 5px;font-size:13px}
+    .rev1{color:#e63946}
   </style>
 </head>
 <body>
 <h1>GuildManager 湲고쉷??</h1>
-<p class="meta">Version v1.4.1 - 2026-06-30</p>
+<p class="meta rev1">Version v1.5.1 - 2026-09-10</p>
 <blockquote>
-<p>Version v1.4.1 - 2026-06-30</p>
+<p class="rev1">Version v1.5.1 - 2026-09-10</p>
 </blockquote>
 <hr>
 <h2>臾몄젣 ?뺤쓽</h2>
@@ -400,6 +401,16 @@
       <li><strong>재생</strong>: 브라우저는 사용자 제스처 이후 시작하며 Unity는 Resources 기반 AudioSource로 로드</li>
       <li><strong>권장 믹스</strong>: BGM 0.28, SFX 0.70</li>
       <li><strong>라이선스</strong>: 각 오디오 자산 폴더에 CC0 고지 보관</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>2026-09-10 v1.5.1 UI 프레임 나인슬라이스 반영</h2>
+    <ul>
+      <li>반응형 모달·패널·버튼·카드·자원 필·슬롯·플로팅 카드·토스트 크롬이 정사각형/가로형 래스터 프레임 PNG를 <code>background-size:100% 100%</code>로 늘리지 않도록 변경했다. 모서리 아트워크는 CSS 나인슬라이스 <code>border-image</code>로 보존하며 기존 그라데이션, 인터랙션 상태, 레이아웃 가드, 텍스트 줄바꿈은 그대로 유지된다.</li>
+      <li>한국어 UI 폰트 스택이 Pretendard, Noto Sans KR, Malgun Gothic 순으로 우선하도록 갱신되었다.</li>
+      <li>폰트 우선순위와 모든 프레임 계열의 나인슬라이스 계약, 반응형/긴 텍스트 가드 보존을 검증하는 소스 계약 테스트 6종이 추가되어 목표 테스트 스위트가 총 15개가 되었다.</li>
+      <li>v1.5.1 빌드가 성공했으며 포터블 파일명은 <code>GuildManager_v1.5.1_portable.exe</code>로 유지된다.</li>
     </ul>
   </section>
 </body>
