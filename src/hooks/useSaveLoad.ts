@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { SaveSlotData } from '../types'
 import { drawQuestPool } from '../utils/quest'
 import { GRADE_PASSIVE_SLOTS, pickRandomPassive } from '../data/passives'
+import { normalizeReturnEpisodeState } from '../utils/returnEpisode'
 
 const SAVE_KEY = 'sma_guild_saves'
 const NUM_SLOTS = 3
@@ -82,6 +83,7 @@ export function useSaveLoad() {
       data.campaignState.fame
     ),
     roomLevels: data.roomLevels ?? { 길드마스터룸: 1, 훈련소: 1, 식당: 1 },
+    returnEpisodeState: normalizeReturnEpisodeState(data.returnEpisodeState),
   })
 
   return { slots, saveToSlot, loadFromSlot, clearSlot, migrateSlotData }

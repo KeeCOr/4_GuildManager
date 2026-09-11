@@ -1,13 +1,13 @@
 {
   "name": "medieval-mercenary-manager",
   "private": true,
-  "version": "1.5.1",
+  "version": "1.6.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "node --test tests\\\\roomAgents.test.mjs tests\\\\onboardingAdvisor.test.mjs tests\\\\tacticalReplayInsights.test.mjs tests\\\\uiFrameContract.test.mjs",
+    "test": "node --test tests\\\\roomAgents.test.mjs tests\\\\onboardingAdvisor.test.mjs tests\\\\tacticalReplayInsights.test.mjs tests\\\\uiFrameContract.test.mjs tests\\\\returnEpisode.test.mjs",
     "build:steam": "node scripts/build-release.js",
     "dist:steam": "node scripts/build-release.js",
     "electron": "electron electron/main.js"

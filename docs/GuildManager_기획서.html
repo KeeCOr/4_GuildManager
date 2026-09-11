@@ -413,5 +413,101 @@
       <li>v1.5.1 빌드가 성공했으며 포터블 파일명은 <code>GuildManager_v1.5.1_portable.exe</code>로 유지된다.</li>
     </ul>
   </section>
+
+  <section>
+    <h2>2026-09-11 v1.6.0 귀환 에피소드(Return Episode) 도입</h2>
+
+    <h3>문제 정의</h3>
+    <p>계약 결과는 지금까지 로그 한 줄과 골드·명성 보상으로 끝나는 "트랜잭션"이었다. 어떤 용병이 어떤 이유로 살아 돌아왔는지, 부상이 이후 무엇으로 이어지는지, 길드 룸 운영과는 어떤 관계가 있는지가 전부 끊어져 있었다. 플레이어는 결과 로그를 스치듯 확인하고 바로 다음 파견으로 넘어갔을 뿐, "이번 원정에서 실제로 무슨 일이 있었나"를 체감할 지점이 없었다.</p>
+
+    <h3>레퍼런스 분석 (차용이 아닌 교훈 각색)</h3>
+    <p>아래 두 게임의 구조를 그대로 옮긴 것이 아니라, 우리 게임의 "귀환 후 되돌아보기" 공백에 맞게 교훈만 각색했다.</p>
+    <table>
+      <thead><tr><th>게임</th><th>핵심 흐름 (3단계)</th><th>우리가 얻은 교훈</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Bistro Heroes / 비스트로 히어로즈</strong> 계열</td><td>결과 확인 → 식사 선택 → 캐릭터 회복/호감도 즉시 피드백</td><td>휴식·식사라는 소재를 캐릭터 중심의 "마무리 비트"로 전환해야 결과가 감정으로 남는다</td></tr>
+        <tr><td><strong>Hustle Castle</strong></td><td>룸 선택 → 거주민 배치 → 생산/훈련 피드백</td><td>룸 배치·상태 변화는 수치 로그가 아니라 성(城) 안에서 눈으로 보이게 만들어야 한다</td></tr>
+      </tbody>
+    </table>
+
+    <h3>핵심 루프</h3>
+    <pre class="loop-box">계약 파견 완료 → 참가자별 귀환 원인·상태 확인 → 3가지 활동 중 하나 선택
+  → 용병·룸 피드백 확인 → 다시 파견</pre>
+
+    <h3>구현 상세 (실제 반영 기준)</h3>
+    <ul>
+      <li><strong>결정론적 에피소드 ID</strong>: <code>${questId}:${completesAt}</code> 형식(<code>src/utils/returnEpisode.ts</code>의 <code>generateReturnEpisode</code>)으로, 동일 파견에 대해 항상 같은 ID가 생성된다.</li>
+      <li><strong>큐잉 시점</strong>: 일반 완료(<code>processCompletions</code>)와 수정구 즉시완료 경로 모두에서 에피소드가 생성되어 <code>enqueueReturnEpisode</code>로 대기열에 쌓인다. 두 경로 모두 결과 로그 모달(<code>showLogModal</code>)을 먼저 띄우도록 <code>setShowQuestModal(false)</code> → <code>setShowLogModal(true)</code> 순서를 유지하며, 귀환 에피소드 모달은 결과 로그를 포함한 다른 모든 모달이 닫힌 뒤에만(<code>returnEpisodeBlockingUIOpen</code>이 거짓일 때) 열린다.</li>
+      <li><strong>한 번에 하나씩</strong>: <code>returnEpisodeState.pending[0]</code>만 화면에 노출되므로 에피소드는 항상 순서대로 하나씩만 등장한다.</li>
+      <li><strong>참가자 카드</strong>: 초상화(<code>MercAvatar</code>), 이름, 귀환 상태(대기중/부상/영혼) 배지를 가진 명명된 카드로 표시된다.</li>
+      <li><strong>원인 서술(cause)</strong>: 성공 시 생존자(없으면 전체 참가자) 중 전투력이 가장 높은 기여자를, 실패 시 생존자 중 HP·컨디션이 가장 낮은 부상자를(생존자가 없으면 전투력이 가장 높은 전사자를) 결정론적으로 골라 "OOO의 활약으로 임무를 성공적으로 마쳤다" / "OOO의 부상으로 임무는 실패로 끝났다" 식 문장을 만든다.</li>
+      <li><strong>3가지 선택지</strong>(생존자 전원 대상, 영혼/사망 용병은 완전히 제외):
+        <ul>
+          <li><strong>축하 연회</strong>(식당) — 사기 +8, 호감도 +4</li>
+          <li><strong>작전 복기</strong>(훈련소) — 경험치 +45, 임계치를 넘으면 통상적인 레벨업 처리(레벨·다음 경험치량·전투력·함정해제·스탯 동반 상승)</li>
+          <li><strong>치료와 휴식</strong>(길드마스터룸, 의무실 비주얼 앵커) — HP +35, 컨디션 +20, 부상 상태였던 용병은 대기중으로 복귀</li>
+        </ul>
+      </li>
+      <li><strong>룸 시스템 재사용</strong>: 새 통화나 새 룸 시스템을 만들지 않았다. 기존 <code>roomAgents</code>(대기중 용병 슬롯 표시)에 임시 행동 텍스트 오버라이드를 추가하고, 기존 장면 포커스(<code>focusRoom</code>/<code>SCENE_FOCUS</code>)를 재사용해 해당 룸을 화면에서 강조하는 방식으로만 구현했다.</li>
+      <li><strong>세이브 호환성</strong>: <code>SaveSlotData.returnEpisodeState</code>는 optional 필드다. <code>normalizeReturnEpisodeState</code>가 손상되거나 중복된 레거시 데이터를 정상화하고, 안정적인 에피소드 ID와 처리 완료 ID 원장(processed ledger)이 재적용을 막아 멱등성을 보장한다. 원장은 최대 200건으로 잘린다.</li>
+    </ul>
+
+    <h3>재미가 만들어지는 지점</h3>
+    <ul>
+      <li><strong>인정(recognition)</strong>: "누가 왜 이렇게 됐는지"가 이름으로 서술되어, 결과가 숫자가 아니라 이야기로 남는다.</li>
+      <li><strong>의미 있지만 가벼운 선택</strong>: 사기/호감도, 성장(경험치), 회복(HP/컨디션)이라는 서로 다른 3가지 회복·성장 축 중 하나를 고르게 해, 매번 고민할 거리는 주되 분석 부담은 낮춘다.</li>
+      <li><strong>눈에 보이는 성(城)의 반응</strong>: 선택한 활동에 따라 룸 슬롯 텍스트가 바뀌고 장면이 해당 룸으로 포커스되어, 선택이 성 안에서 실제로 일어난 일처럼 느껴진다.</li>
+      <li><strong>낮은 마찰의 1클릭 CTA</strong>: 44px 높이의 "적용" 버튼 하나로 즉시 완결된다.</li>
+      <li><strong>짧은 피드백 배지</strong>: 우측 상단에 활동명·대상·보상 요약이 잠깐 떠 확인 비용이 거의 없다.</li>
+    </ul>
+    <p>이 다섯 가지가 합쳐져 "이번 귀환은 어떻게 마무리할까"라는 짧은 기대감을 만들고, 그 기대감이 결과 확인 → 선택 → 다음 파견으로 이어지는 루프의 재진입 동기가 된다. 그라인드를 추가하지 않으면서도 매 귀환을 한 번 더 들여다보게 만드는 것이 핵심이다.</p>
+
+    <h3>실패/악용 시나리오와 안전장치</h3>
+    <ul>
+      <li><strong>더블클릭·중복 저장</strong>: <code>resolvingReturnEpisodeIdsRef</code>가 처리 중인 에피소드 ID를 즉시 잠그고, <code>processedIds</code> 원장이 이미 처리된 ID의 재적용을 막아 이중 보상이 불가능하다.</li>
+      <li><strong>사망 참가자 제외</strong>: 상태가 <code>영혼</code>인 용병은 어떤 선택지를 골라도 효과가 적용되지 않고 피드백 대상에서도 제외된다.</li>
+      <li><strong>레거시 데이터 누락</strong>: 구버전 세이브에 <code>returnEpisodeState</code>가 없으면 <code>normalizeReturnEpisodeState</code>가 빈 상태(대기열 없음, 처리 원장 없음)로 정규화한다.</li>
+      <li><strong>모달 우선순위</strong>: 결과 로그 모달을 포함한 다른 모달이 열려 있으면 귀환 에피소드 모달은 뜨지 않아 겹침이 없다.</li>
+      <li><strong>무작위 승급 없음</strong>: 작전 복기의 레벨업은 고정된 경험치 +45만 반영하며 임의의 확률 보정은 없다.</li>
+      <li><strong>큐 순서 보존</strong>: 여러 계약이 동시에 완료돼도 각 에피소드는 발생 순서대로 대기열에 쌓이고 그 순서대로 소비된다.</li>
+    </ul>
+
+    <h3>콘텐츠 예시</h3>
+    <p><strong>성공 예시 — "고블린 소탕" (참가자: 카이강, 미나원)</strong></p>
+    <ul>
+      <li>원인 서술: "카이강의 활약으로 임무를 성공적으로 마쳤다."</li>
+      <li>축하 연회 선택 시: 카이강·미나원 모두 사기 +8, 호감도 +4</li>
+      <li>작전 복기 선택 시: 카이강·미나원 모두 경험치 +45(임계치 도달 시 레벨업)</li>
+      <li>치료와 휴식 선택 시: 카이강·미나원 모두 HP +35, 컨디션 +20(부상 상태면 대기중으로 전환)</li>
+    </ul>
+    <p><strong>실패 예시 — "심연 균열 조사" (참가자: 카이강, 미나원[부상], 고인[영혼])</strong></p>
+    <ul>
+      <li>원인 서술: "미나원의 부상으로 임무는 실패로 끝났다."</li>
+      <li>축하 연회 선택 시: 카이강·미나원 사기 +8, 호감도 +4 (고인은 완전히 제외)</li>
+      <li>작전 복기 선택 시: 카이강·미나원 경험치 +45 (고인은 완전히 제외)</li>
+      <li>치료와 휴식 선택 시: 카이강 HP +35/컨디션 +20, 미나원은 추가로 부상→대기중 전환 (고인은 완전히 제외)</li>
+    </ul>
+
+    <h3>성공 KPI</h3>
+    <table>
+      <thead><tr><th>지표</th><th>목표 수치</th></tr></thead>
+      <tbody>
+        <tr><td>귀환 에피소드 선택 완료율</td><td>70% 이상</td></tr>
+        <tr><td>선택 소요 시간(중앙값)</td><td>8초 이내</td></tr>
+        <tr><td>재파견까지 2분 이내 도달률</td><td>기존 대비 +10%p</td></tr>
+        <tr><td>중복 보상 발생 건수</td><td>0건</td></tr>
+        <tr><td>1600x900 기준 모달 겹침 결함</td><td>0건</td></tr>
+      </tbody>
+    </table>
+
+    <h3>검증</h3>
+    <ul>
+      <li><code>tests/returnEpisode.test.mjs</code> 전용 테스트 7종(결정론적 생성·멱등 큐잉, 축하 연회, 작전 복기 레벨업, 치료와 휴식·영혼 제외, 이미 처리된 에피소드 재적용 방지, 레거시 데이터 정규화·200건 원장 상한, 대기열 중복 제거) 통과.</li>
+      <li>전체 테스트 스위트 22/22 통과(<code>npm test</code> 기준 roomAgents 3 + onboardingAdvisor 4 + tacticalReplayInsights 2 + uiFrameContract 6 + returnEpisode 7).</li>
+      <li>TypeScript 컴파일 및 Vite 빌드 통과.</li>
+      <li><span class="rev1">시각 검증 아티팩트(1600x900 기준): 반영 전 <code>docs/GuildManager_before_return_episode_1600x900.png</code>, 목표 목업 <code>docs/GuildManager_return_episode_mockup.png</code>, 반영 후 런타임 캡처 <code>docs/GuildManager_after_return_episode_1600x900.png</code>, 나란히 비교 <code>docs/GuildManager_return_episode_comparison_side_by_side.png</code>, 50% 오버레이 비교 <code>docs/GuildManager_return_episode_overlay_50.png</code> 5종 모두 확보 완료.</span></li>
+      <li><span class="rev1">비교 판정: 런타임 화면은 목업의 중앙 정렬 위계와 참가자·원인·보상 정보의 가독성을 그대로 유지하되, 목업의 세로로 긴 3행 레이아웃을 3개의 가로형 카드로 의도적으로 압축해 1600x900 성(城) 배경 맥락을 보존하고 빠른 원클릭 선택을 가능하게 했다. 나란히 비교와 50% 오버레이 결과 중앙 정렬, 안전 여백, 동일 레이어 겹침 없음이 확인되었다.</span></li>
+    </ul>
+  </section>
 </body>
 </html>

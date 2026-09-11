@@ -1,15 +1,22 @@
-import { readFileSync, writeFileSync, existsSync, readdirSync, rmSync, copyFileSync } from 'fs'
+import { readFileSync, writeFileSync, existsSync, readdirSync, rmSync, copyFileSync, mkdirSync } from 'fs'
 import { join, resolve } from 'path'
 import { execSync, spawnSync } from 'child_process'
 
 const root = resolve(import.meta.dirname, '..')
 const pkgPath = join(root, 'package.json')
 
+const noVersionBump = process.argv.includes('--no-version-bump')
+
 const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'))
-const [major, minor, patch] = pkg.version.split('.').map(Number)
-pkg.version = `${major}.${minor}.${patch + 1}`
-writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf-8')
-console.log(`버전 업: v${[major, minor, patch].join('.')} → v${pkg.version}`)
+if (noVersionBump) {
+  console.log(`버전 유지: v${pkg.version}`)
+} else {
+  const [major, minor, patch] = pkg.version.split('.').map(Number)
+  const prevVersion = pkg.version
+  pkg.version = `${major}.${minor}.${patch + 1}`
+  writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf-8')
+  console.log(`버전 업: v${prevVersion} → v${pkg.version}`)
+}
 
 // 구 HTML 릴리스 파일 전부 삭제
 const releaseDir = join(root, 'release')
@@ -75,6 +82,15 @@ if (existsSync(electronModules)) {
   if (existsSync(exeSrc)) {
     copyFileSync(exeSrc, exeDst)
     console.log(`\n✅ 실행 파일: ${exeDst}`)
+
+    // release/ 폴더의 구 portable exe 정리 후 최신 파일 복사
+    if (!existsSync(releaseDir)) mkdirSync(releaseDir, { recursive: true })
+    for (const f of readdirSync(releaseDir)) {
+      if (/^GuildManager_v.*_portable\.exe$/.test(f)) rmSync(join(releaseDir, f))
+    }
+    const exeReleaseDst = join(releaseDir, exeName)
+    copyFileSync(exeSrc, exeReleaseDst)
+    console.log(`✅ 실행 파일(release): ${exeReleaseDst}`)
   } else if (ebDone) {
     console.log('Electron 빌드 완료 (exe 경로 확인 필요)')
   } else {

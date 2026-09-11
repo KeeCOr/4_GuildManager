@@ -226,6 +226,46 @@ export interface ActiveExpedition {
   nextAvailableAt: number // when next expedition can be launched
 }
 
+export type ReturnActivityId = 'feast' | 'review' | 'care'
+
+export interface ReturnParticipantSnapshot {
+  id: string
+  name: string
+  status: MercenaryStatus
+}
+
+export interface ReturnEpisodeChoice {
+  id: ReturnActivityId
+  label: string
+  description: string
+}
+
+export interface ReturnEpisode {
+  id: string             // `${questId}:${completesAt}` — stable across duplicate resolutions
+  questId: string
+  completesAt: number
+  questName: string
+  success: boolean
+  cause: string           // deterministic, concrete: names an actual participant
+  participants: ReturnParticipantSnapshot[]
+  choices: ReturnEpisodeChoice[]
+}
+
+export interface ReturnActivityFeedback {
+  activityId: ReturnActivityId
+  participantIds: string[]
+  visualRoom: RoomId
+  visualAnchor?: 'infirmary'
+  actionLabel: string
+  rewardLabel: string
+}
+
+export interface ReturnEpisodeState {
+  pending: ReturnEpisode[]
+  processedIds: string[]
+  activeFeedback: ReturnActivityFeedback | null
+}
+
 export interface SaveSlotData {
   name: string
   day: number
@@ -248,4 +288,5 @@ export interface SaveSlotData {
   activeDungeon: ActiveDungeon | null
   activeExpedition: ActiveExpedition | null
   expeditionNextAt: number   // timestamp when expedition is available again
+  returnEpisodeState?: ReturnEpisodeState
 }

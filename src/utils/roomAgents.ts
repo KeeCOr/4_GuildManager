@@ -61,12 +61,15 @@ export const getRoomActionLabel = (slot: RoomAgentSlot): string => slot.action
 
 export const deriveRoomAgents = <TMerc extends RoomAgentMerc>(
   mercs: TMerc[],
-  pendingMercIds: ReadonlySet<string>
+  pendingMercIds: ReadonlySet<string>,
+  actionLabelOverrides?: ReadonlyMap<string, string>
 ): RoomAgent<TMerc>[] => {
   const idleMercs = mercs.filter(merc => merc.status === '대기중' && !pendingMercIds.has(merc.id))
   return idleMercs.map((merc): RoomAgent<TMerc> => {
     const roomMates = idleMercs.filter(roomMerc => roomMerc.room === merc.room)
-    const slot = getRoomAgentSlot(merc, roomMates)
+    const baseSlot = getRoomAgentSlot(merc, roomMates)
+    const overrideAction = actionLabelOverrides?.get(merc.id)
+    const slot = overrideAction ? { ...baseSlot, action: overrideAction } : baseSlot
     const hash = hashString(merc.id)
     return {
       merc,

@@ -1,6 +1,6 @@
 {
   "name": "guild-manager",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "description": "Guild Manager desktop build",
   "main": "main.js",
   "scripts": {

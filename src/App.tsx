@@ -17,9 +17,10 @@ import { useDungeon } from './hooks/useDungeon'
 import { getSprite } from './assets/Character/sprites'
 import { UI_ICONS } from './assets/uiIcons'
 import { deriveRoomAgents, getRoomActionLabel } from './utils/roomAgents'
+import { generateReturnEpisode, enqueueReturnEpisode, resolveReturnEpisode, createDefaultReturnEpisodeState, normalizeReturnEpisodeState } from './utils/returnEpisode'
 import bgBase from './assets/BG/BG_Base.jpg'
 import sceneFrontProps from './assets/BG/props/front/scene-front-props.png'
-import type { Mercenary, Quest, ActiveQuest, GuildBuildings, CampaignState, Equipment, EquipSlot, MerchantState, ActiveDungeon, ActiveExpedition, ExpeditionResult, SaveSlotData, RoomId } from './types'
+import type { Mercenary, Quest, ActiveQuest, GuildBuildings, CampaignState, Equipment, EquipSlot, MerchantState, ActiveDungeon, ActiveExpedition, ExpeditionResult, SaveSlotData, RoomId, ReturnEpisode, ReturnEpisodeState, ReturnActivityId } from './types'
 
 // ── Display helpers ────────────────────────────────────────────────────────
 
@@ -712,6 +713,8 @@ function App() {
   const [completedQuestIds, setCompletedQuestIds] = useState<string[]>([])
   const [showStoryModal, setShowStoryModal] = useState(false)
   const [storyContent, setStoryContent] = useState<{ questName: string; chainName: string; title: string; lines: string[] } | null>(null)
+  const [returnEpisodeState, setReturnEpisodeState] = useState<ReturnEpisodeState>(createDefaultReturnEpisodeState)
+  const resolvingReturnEpisodeIdsRef = useRef<Set<string>>(new Set())
   const [saveSlots, setSaveSlots] = useState<(SaveSlotData | null)[]>(loadAllSaveSlots)
   const [scale, setScale] = useState(() => Math.min(window.innerWidth / 1600, window.innerHeight / 900))
   const [zoomDelta, setZoomDelta] = useState(0)
@@ -864,9 +867,14 @@ function App() {
     [roomOperations, selectedRoomId]
   )
   const sceneFocus = sceneFocusId ? SCENE_FOCUS[sceneFocusId] : null
+  const returnFeedbackActionOverrides = useMemo(() => {
+    const feedback = returnEpisodeState.activeFeedback
+    if (!feedback) return undefined
+    return new Map(feedback.participantIds.map(id => [id, feedback.actionLabel]))
+  }, [returnEpisodeState.activeFeedback])
   const roomAgents = useMemo(
-    () => deriveRoomAgents(mercs, pendingMercIds),
-    [mercs, pendingMercIds]
+    () => deriveRoomAgents(mercs, pendingMercIds, returnFeedbackActionOverrides),
+    [mercs, pendingMercIds, returnFeedbackActionOverrides]
   )
   const guildRank = useMemo(() => getGuildRank(state.fame), [state.fame])
   const tutorialMissions = useMemo(() => ([
@@ -945,6 +953,30 @@ function App() {
   // ── Game logic ───────────────────────────────────
 
   const log = (msg: string) => setQuestLog(prev => [...prev, msg].slice(-20))
+
+  // ── Return Episode ─────────────────────────────────
+  const returnEpisodeBlockingUIOpen = showTutorial || showSaveModal || showQuestModal || showMercModal ||
+    showLogModal || showSoulOverflowModal || showStoryModal || showEquipModal !== null || showMerchant ||
+    showDungeon || showExpedition || previewArrival !== null || roomMercPreview !== null || pendingDrop !== null
+  const pendingReturnEpisode = returnEpisodeState.pending[0] ?? null
+
+  const handleResolveReturnEpisode = (episode: ReturnEpisode, activityId: ReturnActivityId) => {
+    if (resolvingReturnEpisodeIdsRef.current.has(episode.id)) return
+    resolvingReturnEpisodeIdsRef.current.add(episode.id)
+    const result = resolveReturnEpisode(returnEpisodeState, episode.id, activityId, mercs)
+    if (!result.applied) {
+      resolvingReturnEpisodeIdsRef.current.delete(episode.id)
+      return
+    }
+    setMercs(result.mercs)
+    setReturnEpisodeState(result.state)
+    const feedback = result.state.activeFeedback
+    if (feedback) {
+      const names = episode.participants.filter(p => feedback.participantIds.includes(p.id)).map(p => p.name).join(', ')
+      log(`🎊 [${episode.questName}] ${feedback.actionLabel} — ${names} (${feedback.rewardLabel})`)
+      focusRoom(feedback.visualRoom)
+    }
+  }
 
   useEffect(() => {
     const nextLevel = computeGuildLevel(state.fame)
@@ -1471,6 +1503,9 @@ function App() {
     nextMercs = nextMercs.map(m =>
       aq.assignedMercIds.includes(m.id) && m.status === '파견중' ? { ...m, status: '대기중' } : m)
 
+    const instantReturnEpisode = generateReturnEpisode(aq, quest.name, success, nextMercs)
+    setReturnEpisodeState(prev => enqueueReturnEpisode(prev, instantReturnEpisode))
+
     // Quest drop + dungeon trigger
     const { drop, dungeon: newDungeon } = rollQuestExtras(quest, success, activeDungeon)
     if (drop) setPendingDrop(drop)
@@ -1487,6 +1522,7 @@ function App() {
     setQuestLog(prev => [...prev, success ? `✅ [${quest.name}] 즉시완료 성공!` : `❌ [${quest.name}] 즉시완료 실패!`, ...questLines].slice(-20))
     setBattleResults(prev => [...prev, newPage])
     setBattleResultPage(newPageIdx)
+    setShowQuestModal(false)
     setShowLogModal(true)
     if (questSuccessCount > 0) setQuestsCompletedToday(prev => prev + questSuccessCount)
     if (questDeaths > 0) setDeathsToday(prev => prev + questDeaths)
@@ -1510,6 +1546,7 @@ function App() {
       questPool, roomLevels, completedQuestIds,
       guildInventory, merchantState, activeDungeon,
       activeExpedition, expeditionNextAt,
+      returnEpisodeState,
     }
     setSaveSlots(prev => {
       const next = [...prev]
@@ -1550,6 +1587,8 @@ function App() {
     setActiveDungeon(data.activeDungeon ?? null)
     setActiveExpedition(data.activeExpedition ?? null)
     setExpeditionNextAt(data.expeditionNextAt ?? 0)
+    setReturnEpisodeState(normalizeReturnEpisodeState(data.returnEpisodeState))
+    resolvingReturnEpisodeIdsRef.current.clear()
     setPendingAssign({})
     setSelectedMercId(null)
     setShowSaveModal(false)
@@ -1752,12 +1791,12 @@ function App() {
   }, [])
 
   // ── Real-time quest completion ────────────────────────────────────────────
-  const completionDataRef = useRef({ mercs, state, questLog, buildings, roomLevels, activeQuests, gateArrivals, nextArrivalTime, nextMoraleDropAt, battleResults, completedQuestIds, activeDungeon, activeExpedition })
-  completionDataRef.current = { mercs, state, questLog, buildings, roomLevels, activeQuests, gateArrivals, nextArrivalTime, nextMoraleDropAt, battleResults, completedQuestIds, activeDungeon, activeExpedition }
+  const completionDataRef = useRef({ mercs, state, questLog, buildings, roomLevels, activeQuests, gateArrivals, nextArrivalTime, nextMoraleDropAt, battleResults, completedQuestIds, activeDungeon, activeExpedition, returnEpisodeState })
+  completionDataRef.current = { mercs, state, questLog, buildings, roomLevels, activeQuests, gateArrivals, nextArrivalTime, nextMoraleDropAt, battleResults, completedQuestIds, activeDungeon, activeExpedition, returnEpisodeState }
 
   const processCompletions = useCallback(() => {
     const now = Date.now()
-    const { mercs, state, questLog: _log, buildings, activeQuests, battleResults, activeDungeon: currentDungeon, activeExpedition: currentExpedition } = completionDataRef.current
+    const { mercs, state, questLog: _log, buildings, activeQuests, battleResults, activeDungeon: currentDungeon, activeExpedition: currentExpedition, returnEpisodeState: currentReturnEpisodeState } = completionDataRef.current
 
     // ── 원정 완료 처리 ─────────────────────────────────────
     if (currentExpedition && !currentExpedition.result && currentExpedition.completesAt <= now) {
@@ -1791,9 +1830,14 @@ function App() {
     const perQuestPages: Array<{ questName: string; success: boolean; lines: string[] }> = []
     let questSuccessCount = 0
     let batchDeaths = 0
+    let nextReturnEpisodeState = currentReturnEpisodeState
 
     for (const aq of completed) {
-      const quest = ALL_QUESTS.find(q => q.id === aq.questId)!
+      const quest = ALL_QUESTS.find(q => q.id === aq.questId)
+      if (!quest) {
+        logs.push(`⚠ 퀘스트 데이터를 찾을 수 없습니다 (id: ${aq.questId})`)
+        continue
+      }
       const questLines: string[] = []
 
       nextMercs = nextMercs.map(m => {
@@ -1936,6 +1980,9 @@ function App() {
       nextMercs = nextMercs.map(m =>
         aq.assignedMercIds.includes(m.id) && m.status === '파견중' ? { ...m, status: '대기중' } : m)
 
+      const returnEpisode = generateReturnEpisode(aq, quest.name, success, nextMercs)
+      nextReturnEpisodeState = enqueueReturnEpisode(nextReturnEpisodeState, returnEpisode)
+
       const { drop: timedDrop, dungeon: timedDungeon } = rollQuestExtras(quest, success, currentDungeon)
       if (timedDrop) setPendingDrop(timedDrop)
       if (timedDungeon) {
@@ -1973,7 +2020,9 @@ function App() {
     setQuestLog(prev => [...prev, ...logs].slice(-20))
     setBattleResults(prev => [...prev, ...perQuestPages])
     setBattleResultPage(firstNewPage)
+    setShowQuestModal(false)
     setShowLogModal(true)
+    setReturnEpisodeState(nextReturnEpisodeState)
     if (questSuccessCount > 0) setQuestsCompletedToday(prev => prev + questSuccessCount)
     if (batchDeaths > 0) setDeathsToday(prev => prev + batchDeaths)
     setCompletedQuestIds(prev => [...new Set([...prev, ...completed.map(aq => aq.questId)])])
@@ -3244,6 +3293,19 @@ function App() {
             </button>
           </div>
         )}
+        {returnEpisodeState.activeFeedback && (() => {
+          const feedback = returnEpisodeState.activeFeedback
+          const names = mercs.filter(m => feedback.participantIds.includes(m.id)).map(m => m.name).join(', ')
+          const badgeLabel = feedback.visualAnchor === 'infirmary' ? '의무실 회복 중' : feedback.actionLabel
+          return (
+            <div className="absolute right-3 top-3 z-40 gm-panel-shell rounded-xl px-3 py-2 pointer-events-none"
+              style={{ maxWidth: 240 }}>
+              <p className="text-xs font-bold" style={{ color: 'rgba(251,191,36,0.86)' }}>{badgeLabel}</p>
+              {names && <p className="text-sm font-extrabold text-white mt-0.5 truncate">{names}</p>}
+              <p className="text-xs mt-0.5" style={{ color: 'rgba(180,220,190,0.85)' }}>{feedback.rewardLabel}</p>
+            </div>
+          )
+        })()}
       </div>
 
       {/* ── Arrival Preview Modal ─────────────── */}
@@ -4237,6 +4299,68 @@ function App() {
                         🕊 성불 +1💎
                       </button>
                     </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* ── Return Episode Modal ─────────────────────────── */}
+      {pendingReturnEpisode && !returnEpisodeBlockingUIOpen && (() => {
+        const episode = pendingReturnEpisode
+        const REWARD_LABEL_BY_ID: Record<ReturnActivityId, string> = {
+          feast: '사기 +8 · 호감도 +4',
+          review: '경험치 +45',
+          care: 'HP +35 · 컨디션 +20',
+        }
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
+            role="dialog" aria-modal="true" aria-labelledby="return-episode-title">
+            <div className="gm-modal-frame rounded-2xl flex flex-col gap-3 p-4 overflow-y-auto"
+              style={{ width: '100%', maxWidth: 620, maxHeight: '85dvh' }}>
+              <div className="gm-panel-titlebar -mx-4 -mt-4 mb-1 flex items-center justify-between px-4 py-3">
+                <h2 id="return-episode-title" className="text-base font-bold text-white">🏕 귀환 에피소드</h2>
+              </div>
+              <div className="flex flex-col items-center py-2">
+                <span className="text-4xl mb-1">{episode.success ? '✅' : '❌'}</span>
+                <p className="text-base font-extrabold text-white">{episode.questName}</p>
+                <p className={`text-sm font-bold mt-0.5 ${episode.success ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {episode.success ? '임무 성공' : '임무 실패'}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2 justify-center">
+                {episode.participants.map(p => {
+                  const liveMerc = mercs.find(m => m.id === p.id)
+                  return (
+                    <div key={p.id} className="gm-card-chrome rounded-xl px-2 py-2 flex flex-col items-center gap-1" style={{ width: 84 }}>
+                      {liveMerc
+                        ? <MercAvatar m={liveMerc} size={40} />
+                        : <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />}
+                      <span className="text-xs font-bold text-white text-center truncate w-full">{p.name}</span>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${p.status === '영혼' ? 'bg-slate-700 text-slate-300' : p.status === '부상' ? 'bg-red-900/60 text-red-300' : 'bg-emerald-900/50 text-emerald-300'}`}>
+                        {p.status}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+              <p className="text-sm text-center" style={{ color: 'rgba(200,210,220,0.82)' }}>{episode.cause}</p>
+              <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
+                {episode.choices.map(choice => (
+                  <div key={choice.id} className="gm-card-chrome rounded-xl p-3 flex flex-col gap-1.5">
+                    <p className="text-sm font-bold text-white">{choice.label}</p>
+                    <p className="text-xs" style={{ color: 'rgba(180,190,200,0.75)' }}>{choice.description}</p>
+                    <p className="text-xs font-bold" style={{ color: 'rgba(251,191,36,0.85)' }}>{REWARD_LABEL_BY_ID[choice.id]}</p>
+                    <button
+                      type="button"
+                      onClick={() => handleResolveReturnEpisode(episode, choice.id)}
+                      aria-label={`${choice.label} 적용`}
+                      className="gm-button-primary rounded-lg text-sm font-extrabold text-white mt-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+                      style={{ minHeight: 44 }}>
+                      적용
+                    </button>
                   </div>
                 ))}
               </div>
