@@ -5,3 +5,4 @@ dist/
 .bkit/
 release/
 .worktrees/
+/Temp/
