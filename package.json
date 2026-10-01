@@ -1,0 +1,27 @@
+{
+  "name": "medieval-mercenary-manager",
+  "private": true,
+  "version": "1.4.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "node --test tests\\\\roomAgents.test.mjs tests\\\\onboardingAdvisor.test.mjs tests\\\\tacticalReplayInsights.test.mjs tests\\\\questConsequences.test.mjs tests\\\\specialBonus.test.mjs tests\\\\questLoot.test.mjs tests\\\\combatTraits.test.mjs tests\\\\questReadiness.test.mjs tests\\\\questResultSections.test.mjs"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.35",
+    "sharp": "^0.34.5",
+    "tailwindcss": "^3.4.5",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.1"
+  }
+}

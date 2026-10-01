@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \":*)",
+      "Bash(node:*)",
+      "Bash(mkdir -p \"C:/Development/4_GM/src/assets\")",
+      "Bash(touch \"C:/Development/4_GM/src/assets/.gitkeep\")",
+      "Bash(wc -c /c/Development/4_GM/src/assets/Character/*.png)",
+      "Bash(ls:*)",
+      "Bash(grep:*)"
+    ]
+  }
+}
