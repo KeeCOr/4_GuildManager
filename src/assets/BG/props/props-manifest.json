@@ -1,0 +1,100 @@
+{
+  "source": "../BG_Base.jpg",
+  "sourceSize": {
+    "width": 2752,
+    "height": 1536
+  },
+  "frontLayer": "front/scene-front-props.png",
+  "cutouts": [
+    {
+      "id": "master_strategy_table",
+      "layer": "front",
+      "room": "길드마스터룸",
+      "x": 1500,
+      "y": 500,
+      "w": 560,
+      "h": 210,
+      "note": "지도 테이블과 전면 다리"
+    },
+    {
+      "id": "master_desk_cluster",
+      "layer": "back",
+      "room": "길드마스터룸",
+      "x": 1570,
+      "y": 425,
+      "w": 640,
+      "h": 220,
+      "note": "책상 지도 양초 기준 프랍"
+    },
+    {
+      "id": "training_weapon_rack",
+      "layer": "front",
+      "room": "훈련소",
+      "x": 1570,
+      "y": 840,
+      "w": 310,
+      "h": 190,
+      "note": "무기 거치대 전경"
+    },
+    {
+      "id": "training_archery_target",
+      "layer": "front",
+      "room": "훈련소",
+      "x": 2060,
+      "y": 860,
+      "w": 230,
+      "h": 220,
+      "note": "과녁과 화살통 전경"
+    },
+    {
+      "id": "training_dummies",
+      "layer": "front",
+      "room": "훈련소",
+      "x": 1290,
+      "y": 795,
+      "w": 310,
+      "h": 260,
+      "note": "훈련 목각 인형 전경"
+    },
+    {
+      "id": "dining_front_tables",
+      "layer": "front",
+      "room": "식당",
+      "x": 1420,
+      "y": 1230,
+      "w": 520,
+      "h": 280,
+      "note": "전면 테이블과 벤치"
+    },
+    {
+      "id": "dining_bar_counter",
+      "layer": "front",
+      "room": "식당",
+      "x": 1995,
+      "y": 1180,
+      "w": 480,
+      "h": 245,
+      "note": "카운터와 선반 전경"
+    },
+    {
+      "id": "dining_fireplace",
+      "layer": "front",
+      "room": "식당",
+      "x": 1615,
+      "y": 1110,
+      "w": 430,
+      "h": 260,
+      "note": "벽난로와 전면 의자"
+    },
+    {
+      "id": "exterior_drawbridge",
+      "layer": "front",
+      "room": "외부",
+      "x": 715,
+      "y": 1190,
+      "w": 390,
+      "h": 320,
+      "note": "다리 난간 전경"
+    }
+  ]
+}
