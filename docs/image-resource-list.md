@@ -6,6 +6,7 @@
 
 | 파일 | 용도 | 권장 사용 위치 |
 | --- | --- | --- |
+| `public/assets/brand/title-logo.png` | Guild Master 타이틀 워드마크 | 상단 길드 헤더 |
 | `src/assets/Generated/guild-hall.png` | 길드 마스터실, 전략 회의실 배경 | 메인 길드 화면, 길드 정보/명성 패널 |
 | `src/assets/Generated/tavern-recruitment.png` | 선술집 및 용병 모집 배경 | 용병 고용, 영입 후보, 호감도 이벤트 |
 | `src/assets/Generated/training-yard.png` | 훈련장 배경 | 훈련소, 용병 성장, 장비/전투력 설명 |

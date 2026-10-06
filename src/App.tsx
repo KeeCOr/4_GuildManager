@@ -2414,7 +2414,7 @@ function App() {
         <div className="flex items-center gap-2 flex-shrink-0">
           <span className="text-lg">🏰</span>
           <div>
-            <h1 className="text-sm font-extrabold text-white leading-none tracking-wide">용병단 길드</h1>
+            <img src="/assets/brand/title-logo.png" alt="GUILD MASTER" className="h-6 w-auto max-w-[144px] object-contain object-left" draggable={false} />
             <p className="text-xs tracking-widest uppercase mt-0.5" style={{ color: 'rgba(150,110,50,0.6)' }}>{guildRank.rank.icon} · {guildRank.rank.name}</p>
           </div>
         </div>
