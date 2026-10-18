@@ -1,6 +1,6 @@
 {
   "name": "guild-manager",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "Guild Manager desktop build",
   "main": "main.js",
   "scripts": {
@@ -32,7 +32,7 @@
       "dist/**/*"
     ],
     "directories": {
-      "output": "release"
+      "output": "../release"
     }
   },
   "devDependencies": {
