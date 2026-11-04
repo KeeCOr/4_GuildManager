@@ -1,5 +1,32 @@
 # GuildManager
 
+<!-- PORTFOLIO-GDD-20261104:START -->
+## 2026-11-04 구현 대조 및 GDD 현행화
+
+- **현재 제품 정의**: 용병의 모집·파견·손실·회복·성장을 관리하는 중세 길드 경영 게임.
+- **핵심 경험 / 흐름**: 모집/편성 → 계약 파견 → 성공·실패·부상·보상 확인 → 비용/회복 판단 → 재편성·재파견.
+- **이번 확인 소스**: C:\work\project-resume\games-latest\4_GM
+- **소스 버전**: 1.4.2
+- **확인 시 Git 기준**: codex/bgm-audio-20261018 / 1fd8ec646abdede1a0622aa995921414d7ad3e91
+- **현재 작업 상태**: 커밋되지 않은 변경 있음. 완료·원격 반영과 구분한다.
+- **이번 검증 범위**: 2026-11-04 문서·선택 소스·Git 메타데이터 읽기 확인. 제품 테스트·빌드 재실행 없음. 과거 PASS 날짜를 오늘로 갱신하지 않음.
+- **구현 / 문서 근거 [existing_document_report]**: 2026-10-27 초반 학습 의뢰는 둘러보기→편성→실제 파견→결과 확인→상태 점검→재파견의6단계이며 실제 행동으로만 진행한다고 GDD가 기록한다.
+- **근거 파일**: C:/work/project-resume/games-latest/4_GM/docs/GuildManager_GDD.md
+- **구현 / 문서 근거 [existing_document_report]**: learningProgress와 첫 계약/결과ID를 optional 저장필드로 보존하며 무관한 결과/중복 이벤트가 학습을 진행하지 않게 처리했다고 기록한다.
+- **근거 파일**: C:/work/project-resume/games-latest/4_GM/docs/GuildManager_GDD.md
+- **구현 / 문서 근거 [existing_document_report]**: MercAvatar는 기존40종 WebP와 PNG금테, StatRadar는 Canvas래스터PNG로 변경했고 SVG출력을 제거한 2026-10-27 기록이 있다.
+- **근거 파일**: C:/work/project-resume/games-latest/4_GM/docs/GuildManager_GDD.md
+- **구현 / 문서 근거 [source_structure_observed]**: App.tsx, LearningQuestPanel, MercAvatar, StatRadar 및 파견/던전 UI가 현재 소스에 존재한다.
+- **근거 파일**: C:/work/project-resume/games-latest/4_GM/src/components
+- **이전 검증 기록 (이번 재실행 아님)**: 2026-10-27 최종 전체npm test74개·build·diff체크 통과와 Chrome 용병 상세/레이더 전환 관찰 기록. 당시 EXE는 갱신하지 않았음.
+- **미완료 / 제한**: 2026-11-04 추가점검 보고: 프레임과 본문 겹침.
+- **미완료 / 제한**: 기존EXE와 현재 dirty개선 소스의 대응, 좁은 화면/대량용병/긴문구는 미검증.
+- **다음 행동**: 현재 소스의 프레임/본문 겹침부터 정리하고 학습6단계 마지막 재파견·저장복귀를 검증한다.
+
+<!-- PORTFOLIO-GDD-20261104:END -->
+
+
+
 - 문서 유형: 게임
 - 문서 버전: 1.0
 - 프로젝트 버전: 1.4.1
